@@ -12,7 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.lifecycleScope
+import com.connort6.expensemonitor.repo.Account
+import com.connort6.expensemonitor.repo.AccountRepo
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,13 +24,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ExpenseMonitorTheme {
-                Scaffold( modifier = Modifier.fillMaxSize() ) { innerPadding ->
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
                         name = "Android",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
             }
+        }
+
+        lifecycleScope.launch {
+            AccountRepo.getInstance().createAccount(Account(name = "Test acc 1", balance = 150553.5))
         }
     }
 }
