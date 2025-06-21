@@ -31,7 +31,7 @@ class AccountRepo private constructor(
     }
 
     suspend fun getAllAccounts(): List<Account> {
-        val snapshot = collection.whereEqualTo(Account::deleted.name, false).get(Source.CACHE).await()
+        val snapshot = collection.whereEqualTo(Account::deleted.name, false).get(/*Source.CACHE*/).await()
         return snapshot.toObjects(Account::class.java)
     }
 

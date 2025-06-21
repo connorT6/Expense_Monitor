@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
@@ -14,9 +15,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -40,23 +44,26 @@ import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 
 @Composable
 fun AccountScreen(
-    navController: NavController = rememberNavController(),
-    accountViewModel: AccountViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    navController: NavController = rememberNavController(), accountViewModel: AccountViewModel = viewModel(), modifier: Modifier = Modifier
 ) {
     val accountState by accountViewModel.accountsState.collectAsState()
-    AccountsView(accountState, {
-
+    AccountsView(accountState, { account ->
+        accountViewModel.addAccount(account)
+    }, { id ->
+        accountViewModel.deleteAccount(id)
     })
 }
 
 @Composable
-private fun AccountsView(accountState: AccountData, delAcc: (String) -> Unit) {
+private fun AccountsView(accountState: AccountData, addAcc: (Account) -> Unit, delAcc: (String) -> Unit) {
+    var showAddAcc by remember { mutableStateOf(false) }
     Column {
         Row {
-            Button(onClick = {
-
-            }) {
+            Button(
+                onClick = {
+                    showAddAcc = true
+                }
+            ) {
                 Text("Add Account")
             }
         }
@@ -68,8 +75,19 @@ private fun AccountsView(accountState: AccountData, delAcc: (String) -> Unit) {
             }
         }
     }
-
-
+    if (showAddAcc) {
+        AddOrEditAccount({ s: String, d: Double ->
+            val account = Account(name = s, balance = d)
+            addAcc.invoke(account)
+            showAddAcc = false
+        }, {
+            showAddAcc = false
+        })
+    }
+//
+//    LaunchedEffect(accountState) {
+//        showAddAcc = true
+//    }
 }
 
 @Composable
@@ -90,25 +108,84 @@ private fun AccountItem(acc: Account, delete: (String) -> Unit) {
         IconButton(
             onClick = {
                 showDelDialog = true
-            }
-        ) {
+            }) {
             Icon(
-                Icons.Default.Delete, contentDescription = "",
-                tint = Color.Red
+                Icons.Default.Delete, contentDescription = "", tint = Color.Red
             )
         }
     }
 
     if (showDelDialog) {
-        ShowDeleteDialog(
-            onConfirm = {
-                delete.invoke(acc.id)
-            },
-            onCancel = {
-                showDelDialog = false
-            }
-        )
+        ShowDeleteDialog(onConfirm = {
+            delete.invoke(acc.id)
+        }, onCancel = {
+            showDelDialog = false
+        })
     }
+}
+
+@Composable
+fun AddOrEditAccount(onAdd: (name: String, balance: Double) -> Unit, onCancel: () -> Unit) {
+
+    Dialog(
+        onDismissRequest = { onCancel.invoke() }, properties = DialogProperties(
+            dismissOnBackPress = false, dismissOnClickOutside = false
+        )
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                var text by remember { mutableStateOf("") }
+                var balance by remember { mutableStateOf("") }
+
+                OutlinedTextField(value = text, onValueChange = {
+                    text = it
+                }, label = { Text("Name") })
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = balance,
+                    onValueChange = { it ->
+                        if (it.all { it.isDigit() }) {
+                            balance = it
+                        }
+                    },
+                    label = { Text("Balance") },
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        keyboardType = KeyboardType.Number
+                    ),
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                var buttonsEnabled by remember { mutableStateOf(true) }
+                Row {
+                    Button(
+                        onClick = {
+                            onAdd.invoke(text, balance.toDouble())
+                            buttonsEnabled = false
+                        }, enabled = buttonsEnabled, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    ) {
+                        Text("Save")
+                    }
+                    Spacer(modifier = Modifier.width(15.dp))
+                    Button(
+                        onClick = {
+                            onCancel.invoke()
+                            buttonsEnabled = false
+                        }, enabled = buttonsEnabled
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 @Composable
@@ -116,15 +193,12 @@ fun ShowDeleteDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
     var enabled by remember { mutableStateOf(true) }
 
     Dialog(
-        onDismissRequest = { /* Do nothing to prevent dismissal */ },
-        properties = DialogProperties(
-            dismissOnBackPress = false,
-            dismissOnClickOutside = false
+        onDismissRequest = { /* Do nothing to prevent dismissal */ }, properties = DialogProperties(
+            dismissOnBackPress = false, dismissOnClickOutside = false
         )
     ) {
         Surface(
-            shape = MaterialTheme.shapes.medium,
-            tonalElevation = 8.dp
+            shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
@@ -135,17 +209,17 @@ fun ShowDeleteDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
                     Button(
                         onClick = {
                             onConfirm.invoke()
-
-                        },
-                        enabled = enabled,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                            enabled = false
+                        }, enabled = enabled, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                     ) {
                         Text("Yes")
                     }
                     Spacer(modifier = Modifier.width(15.dp))
                     Button(
-                        onClick = { onCancel.invoke() },
-                        enabled = enabled
+                        onClick = {
+                            onCancel.invoke()
+                            enabled = false
+                        }, enabled = enabled
                     ) {
                         Text("No")
                     }
@@ -170,9 +244,15 @@ private fun PreviewAcc() {
     val fakeState = AccountData(accounts = fakeAccounts)
 
     ExpenseMonitorTheme {
-        AccountsView(fakeState, {})
+        AccountsView(fakeState, {}, {})
     }
 
+}
+
+@Preview
+@Composable
+private fun PreviewAdd() {
+    AddOrEditAccount({ _, _ -> }, {})
 }
 
 @Preview

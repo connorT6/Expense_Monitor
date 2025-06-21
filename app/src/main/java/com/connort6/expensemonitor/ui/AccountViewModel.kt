@@ -30,6 +30,18 @@ class AccountViewModel : ViewModel() {
         }
     }
 
+    fun addAccount(account: Account){
+        viewModelScope.launch {
+            accountRepo.createAccount(account)
+            val allAccounts = accountRepo.getAllAccounts()
+            accounts.clear()
+            accounts.addAll(allAccounts)
+            _accountsState.update { accountData ->
+                accountData.copy(accounts = accounts)
+            }
+        }
+    }
+
     fun deleteAccount(accId: String) {
         viewModelScope.launch {
             accountRepo.deleteAccount(accId)
