@@ -31,12 +31,12 @@ class AccountRepo private constructor(
     }
 
     suspend fun getAllAccounts(): List<Account> {
-        val snapshot = collection.get(Source.CACHE).await()
+        val snapshot = collection.whereEqualTo(Account::deleted.name, false).get(Source.CACHE).await()
         return snapshot.toObjects(Account::class.java)
     }
 
-    suspend fun deleteAccount(account: Account) {
-        collection.document(account.id).update(Account::deleted.name, true).await()
+    suspend fun deleteAccount(accId: String) {
+        collection.document(accId).update(Account::deleted.name, true).await()
     }
 
     companion object {
