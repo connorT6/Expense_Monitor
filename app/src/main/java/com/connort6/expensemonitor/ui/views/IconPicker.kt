@@ -1,5 +1,6 @@
 package com.connort6.expensemonitor.ui.views
 
+import android.os.Parcelable
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -25,12 +26,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
+import kotlinx.parcelize.Parcelize
 
 val RESULT_KEY = "picker_result_key"
 val PARAM_KEY = "picker_param"
 
 @Parcelize
-data class PickerResult(val selected: Boolean, val name: String?)
+data class PickerResult(val selected: Boolean, val name: String?) : Parcelable
 
 @Composable
 fun IconPicker(reg: Regex = Regex(""), onSelect: (String) -> Unit, navController: NavController = rememberNavController()) {
