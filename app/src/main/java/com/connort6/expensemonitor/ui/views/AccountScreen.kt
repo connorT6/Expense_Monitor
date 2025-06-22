@@ -50,10 +50,13 @@ import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 fun AccountScreen(
     navController: NavController = rememberNavController(), accountViewModel: AccountViewModel = viewModel(), modifier: Modifier = Modifier
 ) {
+    var showAddAcc by remember { mutableStateOf(false) }
     val accountState by accountViewModel.accountsState.collectAsState()
     AccountsView(
-        accountState, { account ->
-            accountViewModel.addAccount(account)
+        accountState, {
+            //TODO show add acc
+            showAddAcc = true
+//            accountViewModel.addAccount(account)
         }, { id ->
             accountViewModel.deleteAccount(id)
         },
@@ -64,16 +67,15 @@ fun AccountScreen(
 @Composable
 private fun AccountsView(
     accountState: AccountData,
-    addAcc: (Account) -> Unit,
+    addAcc: () -> Unit,
     delAcc: (String) -> Unit,
     navController: NavController = rememberNavController()
 ) {
-    var showAddAcc by remember { mutableStateOf(false) }
     Column {
         Row {
             Button(
                 onClick = {
-                    showAddAcc = true
+                    addAcc.invoke()
                 }
             ) {
                 Text("Add Account")
@@ -87,18 +89,7 @@ private fun AccountsView(
             }
         }
     }
-    if (showAddAcc) {
-        AddOrEditAccount(
-            { name, balance, iconName ->
-            val account = Account(name = name, balance = balance, iconName = iconName)
-            addAcc.invoke(account)
-            showAddAcc = false
-        }, {
-            showAddAcc = false
-        },
-            navController
-        )
-    }
+
 //
 //    LaunchedEffect(accountState) {
 //        showAddAcc = true
