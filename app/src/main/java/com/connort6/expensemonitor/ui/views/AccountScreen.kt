@@ -1,5 +1,6 @@
 package com.connort6.expensemonitor.ui.views
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,38 +48,48 @@ import com.connort6.expensemonitor.ui.AccountData
 import com.connort6.expensemonitor.ui.AccountViewModel
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 
+
+data class AccountScreenData(var dialogShown: Boolean = false, var name: String? = null, var balance: String? = null, var image: String? = null)
+
+
 @Composable
 fun AccountScreen(
     navController: NavController = rememberNavController(), accountViewModel: AccountViewModel = viewModel(), modifier: Modifier = Modifier
 ) {
-    var showAddAcc by remember { mutableStateOf(false) }
     val accountState by accountViewModel.accountsState.collectAsState()
+    val screenData by accountViewModel.accountScreenData.collectAsState()
     AccountsView(
         accountState, {
             //TODO show add acc
-            showAddAcc = true
+            accountViewModel.showAddAcc(true)
 //            accountViewModel.addAccount(account)
         }, { id ->
             accountViewModel.deleteAccount(id)
-        },
-        navController
+        }, navController
     )
+
+    if (screenData.dialogShown) {
+        AddOrEditAccount(
+            {
+                accountViewModel.addAccount()
+                accountViewModel.showAddAcc(false)
+            }, {
+                accountViewModel.showAddAcc(false)
+            }, navController
+        )
+    }
 }
 
 @Composable
 private fun AccountsView(
-    accountState: AccountData,
-    addAcc: () -> Unit,
-    delAcc: (String) -> Unit,
-    navController: NavController = rememberNavController()
+    accountState: AccountData, addAcc: () -> Unit, delAcc: (String) -> Unit, navController: NavController = rememberNavController()
 ) {
     Column {
         Row {
             Button(
                 onClick = {
                     addAcc.invoke()
-                }
-            ) {
+                }) {
                 Text("Add Account")
             }
         }
@@ -133,36 +145,27 @@ private fun AccountItem(acc: Account, delete: (String) -> Unit) {
 
 @Composable
 fun AddOrEditAccount(
-    onAdd: (name: String, balance: Double, iconName: String) -> Unit,
+    onAdd: () -> Unit,
     onCancel: () -> Unit,
-    navController: NavController = rememberNavController()
+    navController: NavController = rememberNavController(),
+    accountViewModel: AccountViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    var showIconPicker by remember { mutableStateOf(false) }
-    var selectedIcon by remember { mutableStateOf("") }
+    val screenData by accountViewModel.accountScreenData.collectAsState()
+    val parentEntry by remember(navController) {
+        derivedStateOf { navController.getBackStackEntry("accountPage") }
+    }
+    val iconPickerViewModel: IconPickerViewModel = viewModel(parentEntry)
+    val iconPickData by iconPickerViewModel.pickerResult.collectAsState()
 
-    LaunchedEffect(Unit) {
-        navController.currentBackStackEntry?.savedStateHandle?.set(
-            RESULT_KEY,
-            null
-        )
+    LaunchedEffect(iconPickData) {
+        Log.d("ASD2", iconPickData?.name ?: "empty")
     }
 
-    // Observe for results from SettingsScreen
-    val resultFlow = navController.previousBackStackEntry
-        ?.savedStateHandle
-        ?.getStateFlow<PickerResult?>(RESULT_KEY, null)
-
-    val result by resultFlow?.collectAsState() ?: remember { mutableStateOf(null) }
-
-    LaunchedEffect(result) {
-        result?.name?.let { name ->
-            selectedIcon = name
+    LaunchedEffect(iconPickData) {
+        if (iconPickData?.selected == true) {
+            accountViewModel.setAddAccIcon(iconPickData?.name ?: "")
         }
-        navController.previousBackStackEntry?.savedStateHandle?.set(
-            RESULT_KEY,
-            null
-        )
     }
 
     Dialog(
@@ -176,34 +179,32 @@ fun AddOrEditAccount(
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
-                var text by remember { mutableStateOf("") }
-                var balance by remember { mutableStateOf("") }
+                val text = screenData.name ?: ""
+                val balance = screenData.balance?.toString() ?: ""
+
                 navController.currentBackStackEntry?.savedStateHandle?.set(
                     PARAM_KEY,
                     Regex(".+")
                 )
 
-                val resId = getDrawableResIdFromR(selectedIcon)
+                val resId = getDrawableResIdFromR(screenData.image ?: "")
                 if (resId == null) {
                     Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = "",
-                        modifier = Modifier.clickable {
+                        Icons.Default.Refresh, contentDescription = "", modifier = Modifier.clickable {
                             navController.navigate("iconPicker")
                         }
                     )
                 } else {
-                    Icon(
-                        painterResource(resId),
-                        contentDescription = "",
-                        modifier = Modifier.clickable {
+                    Image(
+                        painterResource(resId), contentDescription = "", modifier = Modifier.clickable {
                             navController.navigate("iconPicker")
                         }
                     )
                 }
 
-                OutlinedTextField(value = text, onValueChange = {
-                    text = it
+
+                OutlinedTextField(value = text, onValueChange = { it ->
+                    accountViewModel.setAddAccName(it)
                 }, label = { Text("Name") })
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -212,7 +213,7 @@ fun AddOrEditAccount(
                     value = balance,
                     onValueChange = { it ->
                         if (it.all { it.isDigit() }) {
-                            balance = it
+                            accountViewModel.setAddAccBalance(it)
                         }
                     },
                     label = { Text("Balance") },
@@ -230,7 +231,7 @@ fun AddOrEditAccount(
                             if (text.isEmpty() || balance.isEmpty()) {
                                 Toast.makeText(context, "Empty value", Toast.LENGTH_LONG).show()
                             }
-                            onAdd.invoke(text, balance.toDouble(), "")
+                            onAdd.invoke()
                             buttonsEnabled = false
                         }, enabled = buttonsEnabled, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                     ) {
@@ -327,7 +328,10 @@ fun getDrawableResIdFromR(name: String): Int? {
 @Preview
 @Composable
 private fun PreviewAdd() {
-    AddOrEditAccount({ _, _, _ -> }, {})
+    AddOrEditAccount(
+        {}, {},
+        rememberNavController()
+    )
 }
 
 @Preview

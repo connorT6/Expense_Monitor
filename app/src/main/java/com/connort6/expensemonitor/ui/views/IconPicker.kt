@@ -1,6 +1,5 @@
 package com.connort6.expensemonitor.ui.views
 
-import android.os.Parcelable
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -14,6 +13,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,19 +26,26 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
-import kotlinx.parcelize.Parcelize
 
 val RESULT_KEY = "picker_result_key"
 val PARAM_KEY = "picker_param"
 
-@Parcelize
-data class PickerResult(val selected: Boolean, val name: String?) : Parcelable
+data class PickerResult(val selected: Boolean = false, val name: String? = null)
 
 @Composable
-fun IconPicker(reg: Regex = Regex(""), onSelect: (String) -> Unit, navController: NavController = rememberNavController()) {
+fun IconPicker(
+    reg: Regex = Regex(""), onSelect: (String) -> Unit, navController: NavController = rememberNavController(),
+) {
+
+    val parentEntry by remember(navController) {
+        derivedStateOf { navController.getBackStackEntry("accountPage") }
+    }
+    val iconPickerViewModel: IconPickerViewModel = viewModel(parentEntry)
+
     val regex = navController.previousBackStackEntry
         ?.savedStateHandle
         ?.get<Regex>(PARAM_KEY)
@@ -69,10 +79,7 @@ fun IconPicker(reg: Regex = Regex(""), onSelect: (String) -> Unit, navController
                     .size(96.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .clickable {
-                        navController.previousBackStackEntry?.savedStateHandle?.set(
-                            RESULT_KEY,
-                            PickerResult(true, item.resId.toString())
-                        )
+                        iconPickerViewModel.updateResult(PickerResult(true, item.name))
                         navController.popBackStack()
                     },
             ) {
@@ -92,6 +99,12 @@ fun IconPicker(reg: Regex = Regex(""), onSelect: (String) -> Unit, navController
                 )
             }
         }
+    }
+
+    val iconPickData by iconPickerViewModel.pickerResult.collectAsState()
+
+    LaunchedEffect(iconPickData) {
+        Log.d("ASD", iconPickData?.name ?: "empty")
     }
 }
 
