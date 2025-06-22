@@ -21,7 +21,20 @@ data class Account(
     @ServerTimestamp
     val lastUpdated: Timestamp? = null,
     val order: Int = 0
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Account
+
+        return id == other.id
+    }
+
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
+}
 
 @Singleton
 class AccountRepo private constructor(
@@ -29,7 +42,7 @@ class AccountRepo private constructor(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val collection = firestore.collection("asd")
 
-    private val _accounts = MutableStateFlow<List<Account>>(mutableListOf())
+    private val _accounts = MutableStateFlow<Set<Account>>(mutableSetOf())
 
     val accountFlow = _accounts.asStateFlow()
 
@@ -63,8 +76,12 @@ class AccountRepo private constructor(
             it.addOnSuccessListener { querySnapshot ->
                 val sortedByDescending = querySnapshot.toObjects(Account::class.java)
                     .sortedByDescending { it.order }
-                _accounts.value = sortedByDescending
-                listenToChanges(sortedByDescending.first().lastUpdated ?: Timestamp.now())
+                _accounts.value = sortedByDescending.toSet()
+                if (sortedByDescending.isNotEmpty()) {
+                    listenToChanges(sortedByDescending.first().lastUpdated ?: Timestamp.now())
+                } else {
+                    listenToChanges(Timestamp.now())
+                }
             }
             it.addOnFailureListener {
                 Log.d("REPO", "getAllAccounts: ${it.message}")
@@ -81,14 +98,15 @@ class AccountRepo private constructor(
                     return@addSnapshotListener
                 }
                 value?.let { updated ->
-                    val elements = updated.toObjects(Account::class.java).filter { it.id.isNotEmpty() }
+                    val elements = updated.toObjects(Account::class.java).filter { it.id.isNotEmpty() }.toSet()
                     if (elements.isEmpty()) {
                         return@addSnapshotListener
                     }
                     _accounts.update { accountList ->
-                        accountList.toMutableList().apply {
-                            addAll(elements)
-                            sortByDescending { it.order }
+                        accountList.toMutableSet().apply {
+                            removeAll(elements)
+                            addAll(elements.filter { !it.deleted })
+                            sortedByDescending { it.order }
                         }
                     }
                     listenToChanges(elements.first().lastUpdated ?: Timestamp.now())

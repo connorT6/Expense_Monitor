@@ -24,7 +24,7 @@ class AccountViewModel : ViewModel() {
         viewModelScope.launch {
             accountRepo.accountFlow.collect { accounts ->
                 _accountsState.update { state ->
-                    state.copy(accounts = accounts)
+                    state.copy(accounts = accounts.toList())
                 }
             }
         }
