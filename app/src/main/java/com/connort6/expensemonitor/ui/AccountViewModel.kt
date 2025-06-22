@@ -7,6 +7,7 @@ import com.connort6.expensemonitor.repo.AccountRepo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -21,36 +22,23 @@ class AccountViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
-            val allAccounts = accountRepo.getAllAccounts()
-            accounts.clear()
-            accounts.addAll(allAccounts)
-            _accountsState.update { accountData ->
-                accountData.copy(accounts = accounts)
+            accountRepo.accountFlow.collect { accounts ->
+                _accountsState.update { state ->
+                    state.copy(accounts = accounts)
+                }
             }
         }
     }
 
-    fun addAccount(account: Account){
+    fun addAccount(account: Account) {
         viewModelScope.launch {
             accountRepo.createAccount(account)
-            val allAccounts = accountRepo.getAllAccounts()
-            accounts.clear()
-            accounts.addAll(allAccounts)
-            _accountsState.update { accountData ->
-                accountData.copy(accounts = accounts)
-            }
         }
     }
 
     fun deleteAccount(accId: String) {
         viewModelScope.launch {
             accountRepo.deleteAccount(accId)
-            val allAccounts = accountRepo.getAllAccounts()
-            accounts.clear()
-            accounts.addAll(allAccounts)
-            _accountsState.update { accountData ->
-                accountData.copy(accounts = accounts)
-            }
         }
     }
 

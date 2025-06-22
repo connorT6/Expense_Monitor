@@ -118,6 +118,7 @@ private fun AccountItem(acc: Account, delete: (String) -> Unit) {
     if (showDelDialog) {
         ShowDeleteDialog(onConfirm = {
             delete.invoke(acc.id)
+            showDelDialog = false
         }, onCancel = {
             showDelDialog = false
         })
