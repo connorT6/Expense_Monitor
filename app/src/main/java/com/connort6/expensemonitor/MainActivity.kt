@@ -3,23 +3,21 @@ package com.connort6.expensemonitor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import com.connort6.expensemonitor.ui.views.AccountScreen
+import com.connort6.expensemonitor.ui.views.IconPicker
+
+//
+//
+//data class Reg(val regex: Regex)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,17 +28,34 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ExpenseMonitorTheme {
+                val navController = rememberNavController()
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    AccountScreen(
-                        modifier = Modifier
-                            .padding(
-                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = "accountPage",
+                        modifier = Modifier.padding(innerPadding)
+                    ) {
+                        composable("accountPage") {
+                            AccountScreen(
+                                navController = navController,
+                                modifier = Modifier
+                                    .padding(innerPadding)
                             )
-                            .padding(innerPadding)
-                    )
+                        }
+                        composable("iconPicker") {
+                            IconPicker(
+                                navController = navController,
+                                onSelect = { }
+                            )
+                        }
+                    }
                 }
             }
         }
 
     }
+
 }
+

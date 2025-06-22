@@ -7,11 +7,14 @@ import com.connort6.expensemonitor.repo.AccountRepo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class AccountData(val accounts: List<Account> = emptyList())
+
+enum class DEST {
+    ICON_PICKER
+}
 
 class AccountViewModel : ViewModel() {
     private val _accountsState = MutableStateFlow(AccountData())

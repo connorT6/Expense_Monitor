@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.google.gms.google.services)
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+    id ("kotlin-parcelize")
 }
 
 android {
@@ -63,4 +64,5 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.material3)
     implementation(libs.androidx.material3.android)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 }

@@ -20,7 +20,8 @@ data class Account(
     var deleted: Boolean = false,
     @ServerTimestamp
     val lastUpdated: Timestamp? = null,
-    val order: Int = 0
+    val order: Int = 0,
+    val iconName: String = ""
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
