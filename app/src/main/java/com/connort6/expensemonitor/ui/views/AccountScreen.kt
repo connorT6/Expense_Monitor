@@ -127,8 +127,11 @@ private fun AccountsView(
 private fun AccountItem(acc: Account, delete: (String) -> Unit) {
     var showDelDialog by remember { mutableStateOf(false) }
 
-    Row {
-        Image(painterResource(getDrawableResIdFromR(acc.iconName) ?: R.drawable.ic_bank), null)
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(painterResource(getDrawableResIdFromR(acc.iconName) ?: R.drawable.ic_bank), null,
+            modifier = Modifier.weight(0.25f))
         Spacer(modifier = Modifier.width(8.dp))
 
         Column(
