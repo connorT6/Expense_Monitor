@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class AccountData(val accounts: List<Account> = emptyList())
+data class AccountData(val accounts: List<Account> = emptyList(), val mainAccount: Account = Account())
 
 
 class AccountViewModel : ViewModel() {
@@ -29,6 +29,14 @@ class AccountViewModel : ViewModel() {
             accountRepo.accountFlow.collect { accounts ->
                 _accountsState.update { state ->
                     state.copy(accounts = accounts.toList())
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            accountRepo.mainAccount.collect { mainAcc ->
+                _accountsState.update { state ->
+                    state.copy(mainAccount = mainAcc)
                 }
             }
         }

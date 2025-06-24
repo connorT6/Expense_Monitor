@@ -5,6 +5,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ServerTimestamp
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
 import jakarta.inject.Singleton
 import kotlinx.coroutines.delay
@@ -18,8 +19,7 @@ data class Account(
     val name: String = "",
     var balance: Double = 0.0,
     var deleted: Boolean = false,
-    @ServerTimestamp
-    val lastUpdated: Timestamp? = null,
+    @ServerTimestamp val lastUpdated: Timestamp? = null,
     val order: Int = 0,
     val iconName: String = ""
 ) {
@@ -29,6 +29,10 @@ data class Account(
 
         other as Account
 
+        if (id.isEmpty()) {
+            return lastUpdated == other.lastUpdated
+        }
+
         return id == other.id
     }
 
@@ -37,16 +41,23 @@ data class Account(
     }
 }
 
+data class AccBalUpdate(
+    var balance: Double = 0.0,
+    @ServerTimestamp val lastUpdated: Timestamp? = null,
+)
+
 @Singleton
 class AccountRepo private constructor(
 ) {
-    val mainCollection = FirebaseFirestore.getInstance().collection("test")
+    private val mainCollection = FirebaseFirestore.getInstance().collection("test")
     private val accountRef = mainCollection.document("accounts")
     private val collection = accountRef.collection("Accounts")
 
     private val _accounts = MutableStateFlow<Set<Account>>(mutableSetOf())
+    private val _mainAcc = MutableStateFlow(Account())
 
     val accountFlow = _accounts.asStateFlow()
+    val mainAccount = _mainAcc.asStateFlow()
 
     init {
         accountRef.get().addOnSuccessListener {
@@ -54,7 +65,7 @@ class AccountRepo private constructor(
                 accountRef.set(Account(name = "All")).addOnSuccessListener { }
             }
         }
-        getAllAccounts()
+        getAllAccounts(Source.SERVER)
     }
 
     suspend fun createAccount(account: Account): String {
@@ -63,10 +74,26 @@ class AccountRepo private constructor(
         if (!existing.isEmpty) {
             return existing.toObjects(Account::class.java).first().id
         }
-        val document = collection.add(account).await()
-        collection.document(document.id).update("id", document.id).await()
+
         Log.d("REPO", "createAccount: ")
-        return document.id
+
+        val db = FirebaseFirestore.getInstance()
+        return db.runTransaction({ transaction ->
+
+            val docRef = collection.document()
+            val mainAcc = transaction.get(accountRef).toObject(Account::class.java)
+
+            val mainBal = (mainAcc?.balance ?: 0.0) + account.balance
+
+
+
+            transaction.set(docRef, account.copy(id = docRef.id))
+            transaction.set(
+                accountRef, AccBalUpdate(mainBal), SetOptions.merge()
+            )
+
+            docRef.id
+        }).await()
     }
 
     suspend fun update(account: Account): String? {
@@ -74,15 +101,15 @@ class AccountRepo private constructor(
         return account.id
     }
 
-    private fun getAllAccounts() {
+    private fun getAllAccounts(source: Source) {
         Log.d("REPO", "getAllAccounts: ")
-        val snapshot = collection.whereEqualTo(Account::deleted.name, false)
-            .orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING)
-            .get(Source.CACHE)
+        val snapshot =
+            collection.whereEqualTo(Account::deleted.name, false).orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(source)
+
+
         snapshot.let { it ->
             it.addOnSuccessListener { querySnapshot ->
-                val sortedByDescending = querySnapshot.toObjects(Account::class.java)
-                    .sortedByDescending { it.order }
+                val sortedByDescending = querySnapshot.toObjects(Account::class.java).sortedByDescending { it.order }
                 _accounts.value = sortedByDescending.toSet()
                 if (sortedByDescending.isNotEmpty()) {
                     listenToChanges(sortedByDescending.first().lastUpdated ?: Timestamp.now())
@@ -94,11 +121,18 @@ class AccountRepo private constructor(
                 Log.d("REPO", "getAllAccounts: ${it.message}")
             }
         }
+
+        accountRef.get(source).addOnSuccessListener { value ->
+            if (value == null || !value.exists()) {
+                return@addOnSuccessListener
+            }
+            val account = value.toObject(Account::class.java) ?: return@addOnSuccessListener
+            _mainAcc.value = account
+        }
     }
 
     private fun listenToChanges(lastUpdated: Timestamp) {
-        collection.whereGreaterThan(Account::lastUpdated.name, lastUpdated)
-            .orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING)
+        collection.whereGreaterThan(Account::lastUpdated.name, lastUpdated).orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING)
             .addSnapshotListener { value, error ->
                 if (error != null) {
                     Log.d("REPO", "listenToChanges: ${error.message}")
@@ -119,11 +153,51 @@ class AccountRepo private constructor(
                     listenToChanges(elements.first().lastUpdated ?: Timestamp.now())
                 }
             }
+
+        accountRef.addSnapshotListener { value, error ->
+            if (error != null) {
+                Log.d("REPO", "listenToChanges: ${error.message}")
+                return@addSnapshotListener
+            }
+
+            if (value == null || !value.exists()) {
+                return@addSnapshotListener
+            }
+
+            val account = value.toObject(Account::class.java) ?: return@addSnapshotListener
+            _mainAcc.value = account
+
+        }
     }
 
     suspend fun deleteAccount(accId: String) {
         collection.document(accId).update(Account::deleted.name, true).await()
+
+        val db = FirebaseFirestore.getInstance()
+        db.runTransaction({ transaction ->
+
+            val docRef = collection.document(accId)
+            val deletingAcc = transaction.get(docRef).toObject(Account::class.java)
+            val mainAcc = transaction.get(accountRef).toObject(Account::class.java)
+
+            if (mainAcc == null || deletingAcc == null) {
+                return@runTransaction
+            }
+
+            val mainBal = mainAcc.balance - deletingAcc.balance
+
+            transaction.set(docRef, deletingAcc.copy(lastUpdated = null))
+            transaction.set(
+                accountRef, AccBalUpdate(mainBal), SetOptions.merge()
+            )
+
+            docRef.id
+        }).await()
         Log.d("REPO", "deleteAccount: ")
+    }
+
+    suspend fun updateAccountBalance(addValue: Double, docId: String) {
+
     }
 
     companion object {
@@ -134,4 +208,5 @@ class AccountRepo private constructor(
             instance ?: AccountRepo().also { instance = it }
         }
     }
+
 }
