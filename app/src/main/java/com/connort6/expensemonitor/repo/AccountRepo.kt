@@ -40,14 +40,20 @@ data class Account(
 @Singleton
 class AccountRepo private constructor(
 ) {
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
-    private val collection = firestore.collection("asd")
+    val mainCollection = FirebaseFirestore.getInstance().collection("test")
+    private val accountRef = mainCollection.document("accounts")
+    private val collection = accountRef.collection("Accounts")
 
     private val _accounts = MutableStateFlow<Set<Account>>(mutableSetOf())
 
     val accountFlow = _accounts.asStateFlow()
 
     init {
+        accountRef.get().addOnSuccessListener {
+            if (!it.exists()) {
+                accountRef.set(Account(name = "All")).addOnSuccessListener { }
+            }
+        }
         getAllAccounts()
     }
 
