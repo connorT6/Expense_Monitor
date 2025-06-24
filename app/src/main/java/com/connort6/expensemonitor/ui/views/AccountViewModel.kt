@@ -1,10 +1,9 @@
-package com.connort6.expensemonitor.ui
+package com.connort6.expensemonitor.ui.views
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.AccountRepo
-import com.connort6.expensemonitor.ui.views.AccountScreenData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

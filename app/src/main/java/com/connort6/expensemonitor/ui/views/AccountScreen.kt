@@ -47,8 +47,6 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.repo.Account
-import com.connort6.expensemonitor.ui.AccountData
-import com.connort6.expensemonitor.ui.AccountViewModel
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 
 
