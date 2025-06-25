@@ -4,6 +4,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -108,9 +109,9 @@ private fun AccountsView(
         }
         Column {
             for (acc in accountState.accounts) {
-                AccountItem(acc, { id ->
+                ListItem(acc.name, acc.balance, acc.iconName, R.drawable.ic_bank, acc.id) { id ->
                     delAcc.invoke(id)
-                })
+                }
             }
         }
     }
@@ -122,21 +123,26 @@ private fun AccountsView(
 }
 
 @Composable
-private fun AccountItem(acc: Account, delete: (String) -> Unit) {
+private fun ListItem(name: String, balance: Double?, iconName: String, defaultIcon: Int, itemId: String, delete: (String) -> Unit) {
     var showDelDialog by remember { mutableStateOf(false) }
 
     Row(
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(painterResource(getDrawableResIdFromR(acc.iconName) ?: R.drawable.ic_bank), null,
-            modifier = Modifier.weight(0.25f))
+        Image(
+            painterResource(getDrawableResIdFromR(iconName) ?: defaultIcon), null,
+            modifier = Modifier.weight(0.25f)
+        )
         Spacer(modifier = Modifier.width(8.dp))
 
         Column(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(acc.name)
-            Text("LKR ${"%.2f".format(acc.balance)}")
+            Text(name)
+            balance?.let {
+                Text("LKR ${"%.2f".format(it)}")
+            }
         }
 
         IconButton(
@@ -151,7 +157,7 @@ private fun AccountItem(acc: Account, delete: (String) -> Unit) {
 
     if (showDelDialog) {
         ShowDeleteDialog(onConfirm = {
-            delete.invoke(acc.id)
+            delete.invoke(itemId)
             showDelDialog = false
         }, onCancel = {
             showDelDialog = false
@@ -317,7 +323,7 @@ private fun PreviewAcc() {
     // Fake ViewModel data
     val fakeAccounts = listOf(
         Account(name = "Savings", balance = 1200.0),
-        Account(name = "Credit Card", balance = -300.0),
+        Account(name = "Credit Card"),
     )
 
     // Simulate ViewModel state
@@ -339,6 +345,12 @@ fun getDrawableResIdFromR(name: String): Int? {
     } catch (e: Exception) {
         null
     }
+}
+
+@Preview
+@Composable
+fun itemPreview() {
+    ListItem("name", null, "", R.drawable.ic_amazon, "test id", {})
 }
 
 @Preview
