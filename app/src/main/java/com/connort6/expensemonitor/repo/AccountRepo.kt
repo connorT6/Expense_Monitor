@@ -1,6 +1,7 @@
 package com.connort6.expensemonitor.repo
 
 import android.util.Log
+import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -8,7 +9,6 @@ import com.google.firebase.firestore.ServerTimestamp
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
 import jakarta.inject.Singleton
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -49,7 +49,7 @@ data class AccBalUpdate(
 @Singleton
 class AccountRepo private constructor(
 ) {
-    private val mainCollection = FirebaseFirestore.getInstance().collection("test")
+
     private val accountRef = mainCollection.document("accounts")
     private val collection = accountRef.collection("Accounts")
 
@@ -65,11 +65,10 @@ class AccountRepo private constructor(
                 accountRef.set(Account(name = "All")).addOnSuccessListener { }
             }
         }
-        getAllAccounts(Source.SERVER)
+        getAllAccounts()
     }
 
     suspend fun createAccount(account: Account): String {
-        delay(1000)
         val existing = collection.whereEqualTo(Account::name.name, account.name).get().await()
         if (!existing.isEmpty) {
             return existing.toObjects(Account::class.java).first().id
@@ -101,28 +100,29 @@ class AccountRepo private constructor(
         return account.id
     }
 
-    private fun getAllAccounts(source: Source) {
+    private fun getAllAccounts() {
         Log.d("REPO", "getAllAccounts: ")
         val snapshot =
-            collection.whereEqualTo(Account::deleted.name, false).orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(source)
+            collection.whereEqualTo(Account::deleted.name, false).orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(Source.CACHE)
 
 
         snapshot.let { it ->
             it.addOnSuccessListener { querySnapshot ->
-                val sortedByDescending = querySnapshot.toObjects(Account::class.java).sortedByDescending { it.order }
-                _accounts.value = sortedByDescending.toSet()
-                if (sortedByDescending.isNotEmpty()) {
-                    listenToChanges(sortedByDescending.first().lastUpdated ?: Timestamp.now())
+                val accountsOrderedUpTime = querySnapshot.toObjects(Account::class.java) // accounts orders by last updated time
+                if (accountsOrderedUpTime.isNotEmpty()) {
+                    listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
                 } else {
                     listenToChanges(Timestamp.now())
                 }
+                val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
+                _accounts.value = sortedByDescending.toSet()
             }
             it.addOnFailureListener {
                 Log.d("REPO", "getAllAccounts: ${it.message}")
             }
         }
 
-        accountRef.get(source).addOnSuccessListener { value ->
+        accountRef.get(Source.CACHE).addOnSuccessListener { value ->
             if (value == null || !value.exists()) {
                 return@addOnSuccessListener
             }

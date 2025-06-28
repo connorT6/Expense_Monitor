@@ -16,10 +16,13 @@ import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import com.connort6.expensemonitor.ui.views.AccountScreen
 import com.connort6.expensemonitor.ui.views.IconPicker
 import com.connort6.expensemonitor.ui.views.IconPickerViewModel
+import com.google.firebase.firestore.FirebaseFirestore
 
 //
 //
 //data class Reg(val regex: Regex)
+
+val mainCollection = FirebaseFirestore.getInstance().collection("test")
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
