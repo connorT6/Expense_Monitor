@@ -15,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -34,22 +33,16 @@ import com.connort6.expensemonitor.R
 val RESULT_KEY = "picker_result_key"
 val PARAM_KEY = "picker_param"
 
-data class PickerResult(val selected: Boolean = false, val name: String? = null)
+data class PickerResult(val selected: Boolean = false, val name: String = "")
 
 @Composable
 fun IconPicker(
-    reg: Regex = Regex(""), onSelect: (String) -> Unit, navController: NavController = rememberNavController(),
+    navController: NavController,
+    iconPickerViewModel: IconPickerViewModel,
 ) {
 
-    val parentEntry by remember(navController) {
-        derivedStateOf { navController.getBackStackEntry("accountPage") }
-    }
-    val iconPickerViewModel: IconPickerViewModel = viewModel(parentEntry)
 
-    val regex = navController.previousBackStackEntry
-        ?.savedStateHandle
-        ?.get<Regex>(PARAM_KEY)
-        ?: reg
+    val regex by iconPickerViewModel.iconRegexFilter.collectAsState()
 
     val drawableItems = remember {
         // Use reflection to get all drawable names that match the regex
@@ -113,5 +106,8 @@ data class DrawableItem(val name: String, val resId: Int)
 @Preview
 @Composable
 private fun PreviewIcons() {
-    IconPicker(Regex(".+"), {})
+    IconPicker(
+        iconPickerViewModel = viewModel(),
+        navController = rememberNavController()
+    )
 }

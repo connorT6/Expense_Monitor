@@ -20,7 +20,6 @@ class AccountViewModel : ViewModel() {
     private val _accountScreenData = MutableStateFlow(AccountScreenData())
     val accountScreenData = _accountScreenData.asStateFlow()
 
-    private var accounts: MutableList<Account> = mutableListOf()
     private val accountRepo = AccountRepo.getInstance()
 
     init {

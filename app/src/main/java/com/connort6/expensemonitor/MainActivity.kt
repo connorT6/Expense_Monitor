@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import com.connort6.expensemonitor.ui.views.AccountScreen
 import com.connort6.expensemonitor.ui.views.IconPicker
+import com.connort6.expensemonitor.ui.views.IconPickerViewModel
 
 //
 //
@@ -26,10 +28,11 @@ class MainActivity : ComponentActivity() {
         // This must be BEFORE setContent
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
+
         setContent {
             ExpenseMonitorTheme {
                 val navController = rememberNavController()
-
+                val iconPickerViewModel: IconPickerViewModel = viewModel()
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
                     NavHost(
@@ -40,14 +43,13 @@ class MainActivity : ComponentActivity() {
                         composable("accountPage") {
                             AccountScreen(
                                 navController = navController,
-                                modifier = Modifier
-                                    .padding(innerPadding)
+                                iconPickerViewModel = iconPickerViewModel
                             )
                         }
                         composable("iconPicker") {
                             IconPicker(
                                 navController = navController,
-                                onSelect = { }
+                                iconPickerViewModel = iconPickerViewModel
                             )
                         }
                     }
