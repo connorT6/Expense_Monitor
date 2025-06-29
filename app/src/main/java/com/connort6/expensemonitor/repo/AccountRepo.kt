@@ -69,7 +69,7 @@ class AccountRepo private constructor(
     }
 
     suspend fun createAccount(account: Account): String {
-        val existing = collection.whereEqualTo(Account::name.name, account.name).get().await()
+        val existing = collection.whereEqualTo(Account::name.name, account.name).get(Source.CACHE).await()
         if (!existing.isEmpty) {
             return existing.toObjects(Account::class.java).first().id
         }
