@@ -88,8 +88,8 @@ class CategoryRepo private constructor() {
     }
 
     private fun getAllCategories() {
-        val snapshot =
-            collection.whereEqualTo(Category::deleted.name, false).orderBy(Category::lastUpdated.name, Query.Direction.DESCENDING).get(Source.CACHE)
+        val snapshot = collection.whereEqualTo(Category::deleted.name, false)
+            .orderBy(Category::lastUpdated.name, Query.Direction.DESCENDING).get(Source.CACHE)
 
 
         snapshot.let { it ->
@@ -97,14 +97,34 @@ class CategoryRepo private constructor() {
                 val accountsOrderedUpTime = querySnapshot.toObjects(Category::class.java) // accounts orders by last updated time
                 if (accountsOrderedUpTime.isNotEmpty()) {
                     listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
+                    val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
+                    _categories.value = sortedByDescending.toSet()
                 } else {
-                    listenToChanges(Timestamp.now())
+                    checkDataAvailable()
                 }
-                val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
-                _categories.value = sortedByDescending.toSet()
+
             }
             it.addOnFailureListener {
                 Log.d("REPO", "getAllAccounts: ${it.message}")
+            }
+        }
+    }
+
+    private fun checkDataAvailable() {
+        val snapshot = collection.whereEqualTo(Category::deleted.name, false)
+            .orderBy(Category::lastUpdated.name, Query.Direction.DESCENDING).get(Source.SERVER)
+
+        snapshot.let { it ->
+            it.addOnSuccessListener { querySnapshot ->
+                val accountsOrderedUpTime = querySnapshot.toObjects(Category::class.java) // accounts orders by last updated time
+                if (accountsOrderedUpTime.isNotEmpty()) {
+                    listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
+                    val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
+                    _categories.value = sortedByDescending.toSet()
+                } else {
+                    listenToChanges(Timestamp.now())
+                }
+
             }
         }
     }
