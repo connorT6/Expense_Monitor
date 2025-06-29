@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
 
                     NavHost(
                         navController = navController,
-                        startDestination = "homeScreen",
+                        startDestination = "smsReader",
                         modifier = Modifier.padding(innerPadding)
                     ) {
                         composable("accountPage") {
@@ -67,6 +67,9 @@ class MainActivity : ComponentActivity() {
                                 navController = navController,
                                 iconPickerViewModel = iconPickerViewModel
                             )
+                        }
+                        composable("smsReader") {
+                            SmsReaderScreen()
                         }
                     }
                 }
