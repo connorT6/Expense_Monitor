@@ -6,7 +6,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,9 +16,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -99,42 +107,45 @@ private fun SmsReaderScreenView(
     onRetry: () -> Unit,
     onSaveSms: (SmsMessage) -> Unit
 ) {
+
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
-        if (!permissionGranted) {
-            Text("READ_SMS permission is required to display messages.")
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = onRequestPermission) {
-                Text("Request Permission")
-            }
-        } else {
-            // Content when permission is granted
-            if (isLoading) {
-                CircularProgressIndicator()
-            } else if (error != null) {
-                Text("Error: $error", color = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onRetry) {
-                    Text("Retry")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Absolute.Right
+        ) { MinimalDropdownMenu() }
+
+        LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
+            items(smsMessages, key = { it.id }) { sms -> // Add a key for better performance
+                SmsItemView(sms) {
+                    onSaveSms(it)
                 }
-            } else if (smsMessages.isEmpty()) {
-                Text("No matching SMS messages found.")
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
-                    items(smsMessages, key = { it.id }) { sms -> // Add a key for better performance
-                        SmsItemView(sms) {
-                            onSaveSms(it)
-                        }
-                        HorizontalDivider()
-                    }
-                }
+                HorizontalDivider()
             }
         }
+
+//        if (!permissionGranted) {
+//            Text("READ_SMS permission is required to display messages.")
+//            Spacer(modifier = Modifier.height(8.dp))
+//            Button(onClick = onRequestPermission) {
+//                Text("Request Permission")
+//            }
+//        } else {
+//            // Content when permission is granted
+//            if (isLoading) {
+//                CircularProgressIndicator()
+//            } else if (error != null) {
+//                Text("Error: $error", color = MaterialTheme.colorScheme.error)
+//                Spacer(modifier = Modifier.height(8.dp))
+//                Button(onClick = onRetry) {
+//                    Text("Retry")
+//                }
+//            } else if (smsMessages.isEmpty()) {
+//                Text("No matching SMS messages found.")
+//            } else {
+//
+//            }
+//        }
     }
 }
 
@@ -146,7 +157,7 @@ fun SmsItemView(sms: SmsMessage, onItemClick: (SmsMessage) -> Unit = {}) {
             .clickable {
                 onItemClick.invoke(sms)
             }
-            .padding(vertical = 8.dp)
+            .padding(vertical = 8.dp, horizontal = 8.dp)
             .fillMaxWidth()
     ) {
         Text(
@@ -169,12 +180,37 @@ fun SmsItemView(sms: SmsMessage, onItemClick: (SmsMessage) -> Unit = {}) {
     }
 }
 
+@Composable
+fun MinimalDropdownMenu() {
+    var expanded by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .padding(end = 16.dp)
+    ) {
+        IconButton(onClick = { expanded = !expanded }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Senders") },
+                onClick = { /* Do something... */ }
+            )
+            DropdownMenuItem(
+                text = { Text("Option 2") },
+                onClick = { /* Do something... */ }
+            )
+        }
+    }
+}
+
+
 @Preview(showBackground = true)
 @Composable
 fun SmsReaderScreenPreview() {
     ExpenseMonitorTheme {
-
-
         val sampleMessages = listOf(
             SmsMessage(
                 "1",
@@ -206,6 +242,14 @@ fun SmsReaderScreenPreview() {
             onRequestPermission = {},
             onRetry = {},
             onSaveSms = {})
+    }
+}
+
+@Preview
+@Composable
+fun DropDownPreview() {
+    ExpenseMonitorTheme {
+        MinimalDropdownMenu()
     }
 }
 
