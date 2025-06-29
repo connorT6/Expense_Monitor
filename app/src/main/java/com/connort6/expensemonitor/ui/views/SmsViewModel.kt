@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// Your existing SmsMessage data class (can stay in SmsMessage.kt or move here if preferred)
+// Your existing SmsMessage data class (can stay in SmsScreen.kt or move here if preferred)
 // data class SmsMessage(
 // val id: String,
 // val address: String,

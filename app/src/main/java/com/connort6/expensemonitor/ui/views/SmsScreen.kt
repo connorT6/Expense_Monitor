@@ -28,10 +28,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.connort6.expensemonitor.repo.SmsMessage
+import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -39,7 +41,7 @@ import java.util.Locale
 
 @Composable
 fun SmsReaderScreen(
-    smsViewModel: SmsViewModel = viewModel() // Obtain ViewModel instance
+    smsViewModel: SmsViewModel = viewModel()
 ) {
     val context = LocalContext.current
     // States from ViewModel
@@ -74,6 +76,29 @@ fun SmsReaderScreen(
         }
     }
 
+    SmsReaderScreenView(
+        smsMessages = smsMessages,
+        isLoading = isLoading,
+        error = error,
+        permissionGranted = permissionGranted,
+        onRequestPermission = {
+            permissionLauncher.launch(Manifest.permission.READ_SMS)
+        },
+        onRetry = { smsViewModel.loadSmsMessages(allowedSenders) },
+        onSaveSms = { smsViewModel.saveSmsMessage(it) }
+    )
+}
+
+@Composable
+private fun SmsReaderScreenView(
+    smsMessages: List<SmsMessage>,
+    isLoading: Boolean,
+    error: String?,
+    permissionGranted: Boolean,
+    onRequestPermission: () -> Unit,
+    onRetry: () -> Unit,
+    onSaveSms: (SmsMessage) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -84,9 +109,7 @@ fun SmsReaderScreen(
         if (!permissionGranted) {
             Text("READ_SMS permission is required to display messages.")
             Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = {
-                permissionLauncher.launch(Manifest.permission.READ_SMS)
-            }) {
+            Button(onClick = onRequestPermission) {
                 Text("Request Permission")
             }
         } else {
@@ -96,10 +119,7 @@ fun SmsReaderScreen(
             } else if (error != null) {
                 Text("Error: $error", color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = {
-                    smsViewModel.clearError() // Clear the error
-                    smsViewModel.loadSmsMessages(allowedSenders) // Retry loading
-                }) {
+                Button(onClick = onRetry) {
                     Text("Retry")
                 }
             } else if (smsMessages.isEmpty()) {
@@ -108,7 +128,7 @@ fun SmsReaderScreen(
                 LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
                     items(smsMessages, key = { it.id }) { sms -> // Add a key for better performance
                         SmsItemView(sms) {
-                            smsViewModel.saveSmsMessage(it)
+                            onSaveSms(it)
                         }
                         HorizontalDivider()
                     }
@@ -117,6 +137,7 @@ fun SmsReaderScreen(
         }
     }
 }
+
 
 @Composable
 fun SmsItemView(sms: SmsMessage, onItemClick: (SmsMessage) -> Unit = {}) {
@@ -147,6 +168,47 @@ fun SmsItemView(sms: SmsMessage, onItemClick: (SmsMessage) -> Unit = {}) {
         )
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun SmsReaderScreenPreview() {
+    ExpenseMonitorTheme {
+
+
+        val sampleMessages = listOf(
+            SmsMessage(
+                "1",
+                "5555",
+                "This is a test SMS message body 1. It contains some text.",
+                System.currentTimeMillis() - 100000,
+                type = 1 // Assuming 1 for received, adjust as needed
+            ),
+            SmsMessage(
+                "2",
+                "5555",
+                "Another test SMS from the same sender with different content.",
+                System.currentTimeMillis() - 200000,
+                type = 1 // Assuming 1 for received
+            ),
+            SmsMessage(
+                "3",
+                "Friend",
+                "Hello!",
+                System.currentTimeMillis() - 300000,
+                type = 2 // Assuming 2 for sent, adjust as needed
+            )
+        )
+        SmsReaderScreenView(
+            smsMessages = sampleMessages,
+            isLoading = false,
+            error = null,
+            permissionGranted = true,
+            onRequestPermission = {},
+            onRetry = {},
+            onSaveSms = {})
+    }
+}
+
 
 // REMOVE the old global readSms function from this file:
 // fun readSms(contentResolver: ContentResolver, allowedAddresses: List<String>): List<SmsMessage> { ... }
