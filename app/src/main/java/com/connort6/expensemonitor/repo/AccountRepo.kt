@@ -111,11 +111,11 @@ class AccountRepo private constructor(
                 val accountsOrderedUpTime = querySnapshot.toObjects(Account::class.java) // accounts orders by last updated time
                 if (accountsOrderedUpTime.isNotEmpty()) {
                     listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
+                    val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
+                    _accounts.value = sortedByDescending.toSet()
                 } else {
-                    listenToChanges(Timestamp.now())
+                    checkDataAvailable()
                 }
-                val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
-                _accounts.value = sortedByDescending.toSet()
             }
             it.addOnFailureListener {
                 Log.d("REPO", "getAllAccounts: ${it.message}")
@@ -128,6 +128,23 @@ class AccountRepo private constructor(
             }
             val account = value.toObject(Account::class.java) ?: return@addOnSuccessListener
             _mainAcc.value = account
+        }
+    }
+
+    private fun checkDataAvailable() {
+        val snapshot =
+            collection.whereEqualTo(Account::deleted.name, false).orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(Source.SERVER)
+        snapshot.let { it ->
+            it.addOnSuccessListener { querySnapshot ->
+                val accountsOrderedUpTime = querySnapshot.toObjects(Account::class.java) // accounts orders by last updated time
+                if (accountsOrderedUpTime.isNotEmpty()) {
+                    listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
+                    val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
+                    _accounts.value = sortedByDescending.toSet()
+                } else {
+                    listenToChanges(Timestamp.now())
+                }
+            }
         }
     }
 
@@ -185,7 +202,7 @@ class AccountRepo private constructor(
 
             val mainBal = mainAcc.balance - deletingAcc.balance
 
-            transaction.set(docRef, deletingAcc.copy(lastUpdated = null))
+            transaction.set(docRef, deletingAcc.copy(deleted = true, lastUpdated = null))
             transaction.set(
                 accountRef, AccBalUpdate(mainBal), SetOptions.merge()
             )

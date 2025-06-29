@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
                     NavHost(
                         navController = navController,
-                        startDestination = "smsReader",
+                        startDestination = "homeScreen",
                         modifier = Modifier.padding(innerPadding)
                     ) {
                         composable("accountPage") {
