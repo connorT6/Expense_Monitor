@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.* // Or material3
 import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -51,7 +52,7 @@ fun SmsReaderScreen() {
         permissionGranted = isGranted
         if (isGranted) {
             // Permission Granted: Load SMS messages
-            smsMessages = readSms(context.contentResolver)
+            smsMessages = readSms(context.contentResolver, listOf("5555"))
         } else {
             // Permission Denied: Handle the denial (e.g., show a message to the user)
             // You might want to explain why the permission is needed.
@@ -65,9 +66,8 @@ fun SmsReaderScreen() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (permissionGranted) {
-            Text("SMS Permission Granted. Loading messages...")
             LaunchedEffect(Unit) { // Re-load if permission was granted initially
-                smsMessages = readSms(context.contentResolver)
+                smsMessages = readSms(context.contentResolver, listOf("5555"))
             }
             if (smsMessages.isEmpty()) {
                 Text("No SMS messages found or unable to load.")
@@ -75,7 +75,7 @@ fun SmsReaderScreen() {
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     items(smsMessages) { sms ->
                         SmsItemView(sms)
-                        Divider()
+                        HorizontalDivider()
                     }
                 }
             }
@@ -109,12 +109,10 @@ fun SmsItemView(sms: SmsMessage) {
     }
 }
 
-fun readSms(contentResolver: ContentResolver): List<SmsMessage> {
+fun readSms(contentResolver: ContentResolver, allowedAddresses: List<String>): List<SmsMessage> {
     val smsList = mutableListOf<SmsMessage>()
-    val uri: Uri = Telephony.Sms.CONTENT_URI // You can also use Telephony.Sms.Inbox.CONTENT_URI for only inbox
-    // Other URIs: Telephony.Sms.Sent.CONTENT_URI, Telephony.Sms.Draft.CONTENT_URI
+    val uri: Uri = Telephony.Sms.Inbox.CONTENT_URI // Directly use Inbox URI
 
-    // Columns to retrieve
     val projection = arrayOf(
         Telephony.Sms._ID,
         Telephony.Sms.ADDRESS,
@@ -123,13 +121,26 @@ fun readSms(contentResolver: ContentResolver): List<SmsMessage> {
         Telephony.Sms.TYPE
     )
 
-    // You can add a selection and selectionArgs to filter messages
-    // For example, to get only inbox messages:
-    // val selection = "${Telephony.Sms.TYPE} = ?"
-    // val selectionArgs = arrayOf(Telephony.Sms.MESSAGE_TYPE_INBOX.toString())
-    // Or to get messages from a specific sender:
-    // val selection = "${Telephony.Sms.ADDRESS} = ?"
-    // val selectionArgs = arrayOf("1234567890") // replace with actual number
+    // Build the selection clause
+    // We want messages that are of type INBOX AND whose address is in the allowedAddresses list.
+    val selectionClauses = mutableListOf<String>()
+    val selectionArgsList = mutableListOf<String>()
+
+    // Filter by type: INBOX
+    // Note: Since we are using Telephony.Sms.Inbox.CONTENT_URI,
+    // the type filter might be redundant but it's good for clarity or if you switch URIs.
+    selectionClauses.add("${Telephony.Sms.TYPE} = ?")
+    selectionArgsList.add(Telephony.Sms.MESSAGE_TYPE_INBOX.toString())
+
+    // Filter by allowed addresses
+    if (allowedAddresses.isNotEmpty()) {
+        val addressPlaceholders = List(allowedAddresses.size) { "?" }.joinToString(", ")
+        selectionClauses.add("${Telephony.Sms.ADDRESS} IN ($addressPlaceholders)")
+        selectionArgsList.addAll(allowedAddresses)
+    }
+
+    val selection = selectionClauses.joinToString(" AND ")
+    val selectionArgs = selectionArgsList.toTypedArray()
 
     val sortOrder = "${Telephony.Sms.DATE} DESC" // Latest messages first
 
@@ -138,8 +149,8 @@ fun readSms(contentResolver: ContentResolver): List<SmsMessage> {
         cursor = contentResolver.query(
             uri,
             projection,
-            null, // No selection (get all) or provide your selection
-            null, // No selectionArgs or provide your selectionArgs
+            if (selectionClauses.isEmpty()) null else selection, // Pass null if no selection criteria
+            if (selectionArgsList.isEmpty()) null else selectionArgs, // Pass null if no args
             sortOrder
         )
 
@@ -156,14 +167,17 @@ fun readSms(contentResolver: ContentResolver): List<SmsMessage> {
                 val body = it.getString(bodyColumn)
                 val date = it.getLong(dateColumn)
                 val type = it.getInt(typeColumn)
+
+                // Additional client-side check if needed, though SQL filter should handle it
+                // if (type == Telephony.Sms.MESSAGE_TYPE_INBOX && (allowedAddresses.isEmpty() || allowedAddresses.contains(address))) {
                 smsList.add(SmsMessage(id, address ?: "Unknown", body ?: "", date, type))
+                // }
             }
         }
     } catch (e: Exception) {
-        // Handle exceptions, e.g., SecurityException if permission is denied
         e.printStackTrace()
     } finally {
-        cursor?.close() // Ensure cursor is closed even if 'use' is not used or an exception occurs before it
+        cursor?.close()
     }
     return smsList
 }
