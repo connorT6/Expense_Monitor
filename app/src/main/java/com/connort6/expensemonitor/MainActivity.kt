@@ -18,6 +18,7 @@ import com.connort6.expensemonitor.ui.views.CategoryScreen
 import com.connort6.expensemonitor.ui.views.HomeScreen
 import com.connort6.expensemonitor.ui.views.IconPicker
 import com.connort6.expensemonitor.ui.views.IconPickerViewModel
+import com.connort6.expensemonitor.ui.views.SmsReaderScreen
 import com.google.firebase.firestore.FirebaseFirestore
 
 //

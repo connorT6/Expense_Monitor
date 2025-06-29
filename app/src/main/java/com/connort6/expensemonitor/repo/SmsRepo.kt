@@ -8,10 +8,11 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.tasks.await
 
 data class ProcessedSmsDetails(
-    val smsIds: Set<String> = mutableSetOf(),
+    val smsIds: List<String> = mutableListOf(),
     @ServerTimestamp val lastUpdated: Timestamp? = null
 )
 
@@ -30,6 +31,13 @@ class SmsRepo private constructor() {
     private val messageDocRef = mainCollection.document("messages")
     private val collection = messageDocRef.collection("sms")
 
+
+    private val _messages = MutableStateFlow<List<SmsMessage>>(emptyList())
+    val messages = _messages.asStateFlow()
+
+    private val _smsDetails = MutableStateFlow(ProcessedSmsDetails())
+    val smsDetails = _smsDetails.asStateFlow()
+
     companion object {
         @Volatile
         private var instance: SmsRepo? = null
@@ -41,19 +49,32 @@ class SmsRepo private constructor() {
     init {
         messageDocRef.get().addOnSuccessListener {
             if (!it.exists()) {
-                messageDocRef.set(ProcessedSmsDetails()).addOnSuccessListener { }
+                messageDocRef.set(ProcessedSmsDetails()).addOnSuccessListener {
+                    listenDocChange()
+                }
+            } else {
+                listenDocChange()
             }
         }
     }
 
-    private val _messages = MutableStateFlow<List<SmsMessage>>(emptyList())
-    val messages = _messages.asStateFlow()
+    private fun listenDocChange() {
+        messageDocRef.addSnapshotListener { snapShot, _ ->
+            if (snapShot == null || !snapShot.exists()) {
+                return@addSnapshotListener
+            }
+            val messageDoc =
+                snapShot.toObject(ProcessedSmsDetails::class.java) ?: return@addSnapshotListener
+            _smsDetails.update {
+                messageDoc
+            }
+        }
+    }
 
-    suspend fun saveSms(smsMessage: SmsMessage): String {
-        val existing =
-            collection.whereEqualTo(SmsMessage::id.name, smsMessage.id).get(Source.CACHE).await()
-        if (!existing.isEmpty) {
-            return existing.toObjects(SmsMessage::class.java).first().docId
+    suspend fun saveSms(smsMessage: SmsMessage) {
+        val existing = _smsDetails.value.smsIds.contains(smsMessage.id)
+        if (existing) {
+            return
         }
 
         val db = FirebaseFirestore.getInstance()
@@ -63,10 +84,10 @@ class SmsRepo private constructor() {
             var messageDoc =
                 transaction.get(messageDocRef).toObject(ProcessedSmsDetails::class.java)
             if (messageDoc == null) {
-                return@runTransaction ""
+                return@runTransaction
             }
             messageDoc = messageDoc.copy(
-                smsIds = messageDoc.smsIds + smsMessage.id,
+                smsIds = (messageDoc.smsIds.toSet() + smsMessage.id).toList(),
                 lastUpdated = null
             )
 

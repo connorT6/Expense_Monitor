@@ -1,40 +1,40 @@
-package com.connort6.expensemonitor // Or your specific package
+package com.connort6.expensemonitor.ui.views // Or your specific package
 
- import android.Manifest
- import android.content.pm.PackageManager
- import androidx.activity.compose.rememberLauncherForActivityResult
- import androidx.activity.result.contract.ActivityResultContracts
- import androidx.compose.foundation.layout.Arrangement
- import androidx.compose.foundation.layout.Column
- import androidx.compose.foundation.layout.Spacer
- import androidx.compose.foundation.layout.fillMaxSize
- import androidx.compose.foundation.layout.fillMaxWidth
- import androidx.compose.foundation.layout.height
- import androidx.compose.foundation.layout.padding
- import androidx.compose.foundation.lazy.LazyColumn
- import androidx.compose.foundation.lazy.items
- import androidx.compose.material3.Button
- import androidx.compose.material3.CircularProgressIndicator
- import androidx.compose.material3.HorizontalDivider
- import androidx.compose.material3.MaterialTheme
- import androidx.compose.material3.Text
- import androidx.compose.runtime.Composable
- import androidx.compose.runtime.LaunchedEffect
- import androidx.compose.runtime.getValue
- import androidx.compose.runtime.mutableStateOf
- import androidx.compose.runtime.remember
- import androidx.compose.runtime.setValue
- import androidx.compose.ui.Alignment
- import androidx.compose.ui.Modifier
- import androidx.compose.ui.platform.LocalContext
- import androidx.compose.ui.unit.dp
- import androidx.lifecycle.compose.collectAsStateWithLifecycle
- import androidx.lifecycle.viewmodel.compose.viewModel
- import com.connort6.expensemonitor.repo.SmsMessage
- import com.connort6.expensemonitor.ui.views.SmsViewModel
- import java.text.SimpleDateFormat
- import java.util.Date
- import java.util.Locale
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.connort6.expensemonitor.repo.SmsMessage
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 @Composable
@@ -53,7 +53,8 @@ fun SmsReaderScreen(
         )
     }
 
-    val allowedSenders = remember { listOf("5555"/*, "ANOTHER_SENDER_ID"*/) } // Define your allowed senders
+    val allowedSenders =
+        remember { listOf("5555"/*, "ANOTHER_SENDER_ID"*/) } // Define your allowed senders
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -106,7 +107,9 @@ fun SmsReaderScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
                     items(smsMessages, key = { it.id }) { sms -> // Add a key for better performance
-                        SmsItemView(sms)
+                        SmsItemView(sms) {
+                            smsViewModel.saveSmsMessage(it)
+                        }
                         HorizontalDivider()
                     }
                 }
@@ -116,14 +119,26 @@ fun SmsReaderScreen(
 }
 
 @Composable
-fun SmsItemView(sms: SmsMessage) {
-    Column(modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth()) {
+fun SmsItemView(sms: SmsMessage, onItemClick: (SmsMessage) -> Unit = {}) {
+    Column(
+        modifier = Modifier
+            .clickable {
+                onItemClick.invoke(sms)
+            }
+            .padding(vertical = 8.dp)
+            .fillMaxWidth()
+    ) {
         Text(
             "From: ${sms.address}",
             style = MaterialTheme.typography.titleMedium
         )
         Text(
-            "Date: ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(sms.date))}",
+            "Date: ${
+                SimpleDateFormat(
+                    "dd/MM/yyyy HH:mm:ss",
+                    Locale.getDefault()
+                ).format(Date(sms.date))
+            }",
             style = MaterialTheme.typography.bodySmall
         )
         Text(

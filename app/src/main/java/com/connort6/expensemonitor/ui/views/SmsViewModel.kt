@@ -9,6 +9,7 @@ import android.provider.Telephony
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.SmsMessage
+import com.connort6.expensemonitor.repo.SmsRepo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,8 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
     val error: StateFlow<String?> = _error.asStateFlow()
 
     private val contentResolver: ContentResolver = application.contentResolver
+
+    private val smsRepo = SmsRepo.getInstance()
 
     fun loadSmsMessages(allowedAddresses: List<String>) {
         viewModelScope.launch {
@@ -131,5 +134,11 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearError() {
         _error.value = null
+    }
+
+    fun saveSmsMessage(smsMessage: SmsMessage) {
+        viewModelScope.launch {
+            smsRepo.saveSms(smsMessage)
+        }
     }
 }
