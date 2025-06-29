@@ -1,5 +1,6 @@
 package com.connort6.expensemonitor.ui.views
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +21,7 @@ class IconPickerViewModel : ViewModel() {
 
     fun cleanResult() {
         _pickerResult.update { PickerResult() }
+        Log.d("IconPick", "clean results")
     }
 
     fun updateRegex(regex: Regex) {

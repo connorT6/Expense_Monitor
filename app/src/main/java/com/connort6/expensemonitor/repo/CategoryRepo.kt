@@ -24,7 +24,7 @@ data class Category(
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as Account
+        other as Category
 
         if (id.isEmpty()) {
             return lastUpdated == other.lastUpdated
@@ -46,7 +46,7 @@ class CategoryRepo private constructor() {
     private val _categories = MutableStateFlow<Set<Category>>(mutableSetOf())
 //    private val _mainAcc = MutableStateFlow(Account())
 
-    val accountFlow = _categories.asStateFlow()
+    val categoryFlow = _categories.asStateFlow()
 //    val mainAccount = _mainAcc.asStateFlow()
 
     companion object {
@@ -56,6 +56,10 @@ class CategoryRepo private constructor() {
         fun getInstance(): CategoryRepo = instance ?: synchronized(this) {
             instance ?: CategoryRepo().also { instance = it }
         }
+    }
+
+    init {
+        getAllCategories()
     }
 
     suspend fun createCategory(category: Category): String {
@@ -69,6 +73,14 @@ class CategoryRepo private constructor() {
         docRef.set(category.copy(id = docRef.id)).await()
 
         return docRef.id
+    }
+
+    suspend fun deleteCategory(categoryId: String) {
+        //TODO check already deleted
+        val categoryRef = collection.document(categoryId)
+        val documentSnapshot = categoryRef.get(Source.CACHE).await()
+        val existingCat = documentSnapshot.toObject(Category::class.java) ?: return
+        categoryRef.set(existingCat.copy(deleted = true, lastUpdated = null)).await()
     }
 
     suspend fun updateCategory(category: Category) { // TOTO set last update time

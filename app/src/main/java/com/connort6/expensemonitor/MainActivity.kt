@@ -14,6 +14,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import com.connort6.expensemonitor.ui.views.AccountScreen
+import com.connort6.expensemonitor.ui.views.CategoryScreen
+import com.connort6.expensemonitor.ui.views.HomeScreen
 import com.connort6.expensemonitor.ui.views.IconPicker
 import com.connort6.expensemonitor.ui.views.IconPickerViewModel
 import com.google.firebase.firestore.FirebaseFirestore
@@ -40,7 +42,7 @@ class MainActivity : ComponentActivity() {
 
                     NavHost(
                         navController = navController,
-                        startDestination = "accountPage",
+                        startDestination = "homeScreen",
                         modifier = Modifier.padding(innerPadding)
                     ) {
                         composable("accountPage") {
@@ -51,6 +53,17 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("iconPicker") {
                             IconPicker(
+                                navController = navController,
+                                iconPickerViewModel = iconPickerViewModel
+                            )
+                        }
+                        composable("homeScreen") {
+                            HomeScreen(
+                                navController
+                            )
+                        }
+                        composable("categoryScreen") {
+                            CategoryScreen(
                                 navController = navController,
                                 iconPickerViewModel = iconPickerViewModel
                             )

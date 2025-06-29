@@ -171,7 +171,6 @@ class AccountRepo private constructor(
     }
 
     suspend fun deleteAccount(accId: String) {
-        collection.document(accId).update(Account::deleted.name, true).await()
 
         val db = FirebaseFirestore.getInstance()
         db.runTransaction({ transaction ->

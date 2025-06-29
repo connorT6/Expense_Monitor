@@ -43,32 +43,31 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 
 
-data class AccountScreenData(var dialogShown: Boolean = false, var name: String? = null, var balance: String? = null, var image: String? = null)
+data class AddOrEditPopupData(var dialogShown: Boolean = false, var name: String? = null, var balance: String? = null, var image: String? = null)
 
 
 @Composable
 fun AccountScreen(
-    navController: NavController = rememberNavController(),
-    accountViewModel: AccountViewModel = viewModel(),
+    navController: NavController,
     iconPickerViewModel: IconPickerViewModel
 ) {
+    val accountViewModel: AccountViewModel = viewModel()
     val accountState by accountViewModel.accountsState.collectAsState()
-    val screenData by accountViewModel.accountScreenData.collectAsState()
+    val addOrEditData by accountViewModel.addOrEditData.collectAsState()
     val pickerResult by iconPickerViewModel.pickerResult.collectAsState()
 
     LaunchedEffect(pickerResult) {
-        pickerResult.takeIf { it.selected }.let {
-            it?.name?.let { iconName ->
-                accountViewModel.setAddAccIcon(iconName)
-            }
+        pickerResult.takeIf { it.selected }?.let {
+            iconPickerViewModel.cleanResult()
+            it
+        }?.name?.let { iconName ->
+            accountViewModel.setAddAccIcon(iconName)
         }
-        iconPickerViewModel.cleanResult()
     }
 
     AccountsView(
@@ -78,10 +77,10 @@ fun AccountScreen(
 //            accountViewModel.addAccount(account)
         }, { id ->
             accountViewModel.deleteAccount(id)
-        }, navController
+        }
     )
 
-    if (screenData.dialogShown) {
+    if (addOrEditData.dialogShown) {
         AddOrEditAccount(
             {
                 accountViewModel.addAccount()
@@ -98,14 +97,14 @@ fun AccountScreen(
             },
             {
                 navController.navigate("iconPicker")
-            }, screenData
+            }, addOrEditData
         )
     }
 }
 
 @Composable
 private fun AccountsView(
-    accountState: AccountData, addAcc: () -> Unit, delAcc: (String) -> Unit, navController: NavController = rememberNavController()
+    accountState: AccountData, addAcc: () -> Unit, delAcc: (String) -> Unit
 ) {
     Column {
         Row(
@@ -142,7 +141,7 @@ private fun AccountsView(
 }
 
 @Composable
-private fun ListItem(name: String, balance: Double?, iconName: String, defaultIcon: Int, itemId: String, delete: (String) -> Unit) {
+fun ListItem(name: String, balance: Double?, iconName: String, defaultIcon: Int, itemId: String, delete: (String) -> Unit) {
     var showDelDialog by remember { mutableStateOf(false) }
 
     Row(
@@ -189,7 +188,7 @@ fun AddOrEditAccount(
     onNameEdit: ((name: String) -> Unit)? = null,
     onBalanceEdit: ((balance: String) -> Unit)? = null,
     onOpenIconPicker: (() -> Unit)? = null,
-    screenData: AccountScreenData
+    screenData: AddOrEditPopupData
 ) {
     val context = LocalContext.current
 
@@ -230,26 +229,28 @@ fun AddOrEditAccount(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                OutlinedTextField(
-                    value = balance,
-                    onValueChange = { it ->
-                        if (it.all { it.isDigit() }) {
-                            onBalanceEdit?.invoke(it)
-                        }
-                    },
-                    label = { Text("Balance") },
-                    keyboardOptions = KeyboardOptions.Default.copy(
-                        keyboardType = KeyboardType.Number
-                    ),
-                )
+                onBalanceEdit?.let {
+                    OutlinedTextField(
+                        value = balance,
+                        onValueChange = { typedValue ->
+                            if (typedValue.all { it.isDigit() }) {
+                                onBalanceEdit.invoke(typedValue)
+                            }
+                        },
+                        label = { Text("Balance") },
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            keyboardType = KeyboardType.Number
+                        ),
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 var buttonsEnabled by remember { mutableStateOf(true) }
                 Row {
                     Button(
                         onClick = {
-                            if (text.isEmpty() || balance.isEmpty()) {
+                            if (text.isEmpty() || (onBalanceEdit != null && balance.isEmpty())) {
                                 Toast.makeText(context, "Empty value", Toast.LENGTH_LONG).show()
                             }
                             onAdd.invoke()
@@ -355,7 +356,7 @@ fun itemPreview() {
 @Preview
 @Composable
 private fun PreviewAdd() {
-    val screenData = AccountScreenData(false, "Test name", "52454.15", "")
+    val screenData = AddOrEditPopupData(false, "Test name", "52454.15", "")
     AddOrEditAccount({}, {}, screenData = screenData)
 }
 

@@ -17,8 +17,8 @@ class AccountViewModel : ViewModel() {
     private val _accountsState = MutableStateFlow(AccountData())
     val accountsState: StateFlow<AccountData> = _accountsState.asStateFlow()
 
-    private val _accountScreenData = MutableStateFlow(AccountScreenData())
-    val accountScreenData = _accountScreenData.asStateFlow()
+    private val _addOrEditPopupData = MutableStateFlow(AddOrEditPopupData())
+    val addOrEditData = _addOrEditPopupData.asStateFlow()
 
     private val accountRepo = AccountRepo.getInstance()
 
@@ -42,7 +42,7 @@ class AccountViewModel : ViewModel() {
 
     fun addAccount() {
         viewModelScope.launch {
-            _accountScreenData.value.let { it ->
+            _addOrEditPopupData.value.let { it ->
                 if (it.name != null && it.balance != null) {
                     val account = Account(name = it.name!!, balance = it.balance!!.toDouble(), iconName = it.image ?: "")
                     accountRepo.createAccount(account)
@@ -59,25 +59,25 @@ class AccountViewModel : ViewModel() {
     }
 
     fun showAddAcc(shouldShow: Boolean) {
-        _accountScreenData.update { data ->
+        _addOrEditPopupData.update { data ->
             data.copy(dialogShown = shouldShow)
         }
     }
 
     fun setAddAccName(name: String) {
-        _accountScreenData.update { data ->
+        _addOrEditPopupData.update { data ->
             data.copy(name = name)
         }
     }
 
     fun setAddAccBalance(balance: String) {
-        _accountScreenData.update { data ->
+        _addOrEditPopupData.update { data ->
             data.copy(balance = balance)
         }
     }
 
     fun setAddAccIcon(icon: String) {
-        _accountScreenData.update { data ->
+        _addOrEditPopupData.update { data ->
             data.copy(image = icon)
         }
     }
@@ -87,8 +87,8 @@ class AccountViewModel : ViewModel() {
     }
 
     fun clearAccData() {
-        _accountScreenData.update {
-            AccountScreenData()
+        _addOrEditPopupData.update {
+            AddOrEditPopupData()
         }
     }
 
