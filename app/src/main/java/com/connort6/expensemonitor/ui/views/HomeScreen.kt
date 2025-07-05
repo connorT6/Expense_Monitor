@@ -80,7 +80,6 @@ fun HomeScreen(navController: NavController) {
 fun HomeScreenContent(
     navController: NavController, accountTotalBalance: Double
 ) {
-adde
     var showCreateTransaction by remember { mutableStateOf(false) }
 
     Column(
@@ -177,7 +176,7 @@ adde
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTransactionView(onDismiss : () -> Unit) {
-    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val formatter = SimpleDateFormat("yyyy-MM-dd")
     val timeFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
     var calendar = Calendar.getInstance()
