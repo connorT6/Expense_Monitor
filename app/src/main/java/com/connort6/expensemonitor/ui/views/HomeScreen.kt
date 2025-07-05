@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -138,8 +139,22 @@ fun CreateTransactionView() {
                 modifier = Modifier.padding(16.dp)
             ) {
 
+                OutlinedTextField(value = "text", onValueChange = {
+
+                }, label = { Text("Amount") })
+
+
             }
         }
+    }
+}
+
+
+@Composable
+@Preview
+private fun TrPreview() {
+    ExpenseMonitorTheme {
+        CreateTransactionView()
     }
 }
 
@@ -148,13 +163,5 @@ fun CreateTransactionView() {
 private fun HomePreview() {
     ExpenseMonitorTheme {
         HomeScreenContent(rememberNavController(), 12345.67)
-    }
-}
-
-@Composable
-@Preview
-private fun TrPreview() {
-    ExpenseMonitorTheme {
-        CreateTransactionView()
     }
 }
