@@ -10,6 +10,7 @@ import com.google.firebase.firestore.Source
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.tasks.await
 
 data class Transaction(
     val accountId: String,
@@ -89,11 +90,13 @@ class TransactionRepo private constructor() {
             }
     }
 
-    fun getByQuery(queryBuilder: (CollectionReference) -> Query): Set<Transaction> {
+    suspend fun getByQuery(queryBuilder: (CollectionReference) -> Query): Set<Transaction> {
         val query = queryBuilder(collection)
-        return query.get(Source.CACHE).result.toObjects(Transaction::class.java).toSet()
+        return query.get(Source.CACHE).await().toObjects(Transaction::class.java).toSet()
     }
 
+
+    suspend fun
 
     private fun listenToChanges(timestamp: Timestamp) {
         collection.whereGreaterThan(Transaction::lastUpdated.name, timestamp)
