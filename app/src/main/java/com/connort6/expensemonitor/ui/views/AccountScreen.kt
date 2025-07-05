@@ -359,7 +359,7 @@ fun ItemPreview() {
 @Composable
 private fun PreviewAdd() {
     val screenData = AddOrEditPopupData(false, "Test name", "52454.15", "")
-    AddOrEditAccount({}, {}, screenData = screenData)
+    AddOrEditAccount({}, {}, screenData = screenData, onBalanceEdit = {})
 }
 
 @Preview

@@ -5,6 +5,6 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.google.gms.google.services) apply false
-    kotlin("jvm") version "1.8.0" // Or your Kotlin version
-    kotlin("plugin.serialization") version "1.8.0" // Or your Kotlin version
+    kotlin("jvm") version "2.2.0" // Or your Kotlin version
+    kotlin("plugin.serialization") version "2.2.0" // Or your Kotlin version
 }

@@ -64,5 +64,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.material3)
     implementation(libs.androidx.material3.android)
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.material.icons.extended)
 }
