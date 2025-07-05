@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,7 +7,7 @@ plugins {
     alias(libs.plugins.google.gms.google.services)
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
-    id ("kotlin-parcelize")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -32,11 +34,20 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+
     buildFeatures {
         compose = true
+    }
+}
+
+kotlin {
+    jvmToolchain(11) // This sets the JDK version for compilation and the JVM target
+
+    compilerOptions {
+        languageVersion.set(KotlinVersion.KOTLIN_2_0) // Or your desired Kotlin language version
+        // You can set other compiler options here if needed
+        // For example:
+        // freeCompilerArgs.add("-Xjsr305=strict")
     }
 }
 
