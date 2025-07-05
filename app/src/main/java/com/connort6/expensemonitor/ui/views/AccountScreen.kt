@@ -350,7 +350,9 @@ fun getDrawableResIdFromR(name: String): Int? {
 @Preview
 @Composable
 fun itemPreview() {
-    ListItem("name", null, "", R.drawable.ic_amazon, "test id", {})
+    ExpenseMonitorTheme {
+        ListItem("name", null, "", R.drawable.ic_amazon, "test id", {})
+    }
 }
 
 @Preview

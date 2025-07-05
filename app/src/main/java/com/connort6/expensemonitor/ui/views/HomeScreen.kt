@@ -15,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -25,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -41,8 +44,7 @@ fun HomeScreen(navController: NavController) {
 
 @Composable
 fun HomeScreenContent(
-    navController: NavController,
-    accountTotalBalance: Double
+    navController: NavController, accountTotalBalance: Double
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -61,9 +63,7 @@ fun HomeScreenContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "LKR ${"%.2f".format(accountTotalBalance)}",
-                    fontSize = 20.sp,
-                    modifier = Modifier.weight(1f)
+                    text = "LKR ${"%.2f".format(accountTotalBalance)}", fontSize = 20.sp, modifier = Modifier.weight(1f)
                 )
                 Icon(Icons.Default.Edit, contentDescription = "", modifier = Modifier.clickable {
                     navController.navigate("accountPage")
@@ -77,16 +77,16 @@ fun HomeScreenContent(
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().height(100.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp), horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
+                horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
                     .fillMaxHeight()
                     .clickable {
 
-                }) {
+                    }) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_plus_2),
                     contentDescription = "Income",
@@ -96,15 +96,13 @@ fun HomeScreenContent(
             }
 
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
+                horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
                     .fillMaxHeight()
                     .clickable {
 
-                }) {
+                    }) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_minus_2),
-                    contentDescription = "Expense"
+                    painter = painterResource(id = R.drawable.ic_minus_2), contentDescription = "Expense"
 
                 )
                 Text("Expense")
@@ -117,15 +115,30 @@ fun HomeScreenContent(
                     .fillMaxHeight()
                     .clickable {
 
-                }) {
+                    }) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_transfer),
                     contentDescription = "Swap",
 
-                )
+                    )
                 Text("Swap")
             }
 
+        }
+    }
+}
+
+@Composable
+fun CreateTransactionView() {
+    Dialog({}) {
+        Surface(
+            shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+
+            }
         }
     }
 }
@@ -135,5 +148,13 @@ fun HomeScreenContent(
 private fun HomePreview() {
     ExpenseMonitorTheme {
         HomeScreenContent(rememberNavController(), 12345.67)
+    }
+}
+
+@Composable
+@Preview
+private fun TrPreview() {
+    ExpenseMonitorTheme {
+        CreateTransactionView()
     }
 }
