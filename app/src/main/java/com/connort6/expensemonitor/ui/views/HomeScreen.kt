@@ -80,8 +80,11 @@ fun HomeScreen(navController: NavController) {
 fun HomeScreenContent(
     navController: NavController, accountTotalBalance: Double
 ) {
+adde
+    var showCreateTransaction by remember { mutableStateOf(false) }
+
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
@@ -121,7 +124,7 @@ fun HomeScreenContent(
                 horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
                     .fillMaxHeight()
                     .clickable {
-
+                        showCreateTransaction = true
                     }) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_plus_2),
@@ -135,7 +138,7 @@ fun HomeScreenContent(
                 horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
                     .fillMaxHeight()
                     .clickable {
-
+                        showCreateTransaction = true
                     }) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_minus_2),
@@ -151,7 +154,7 @@ fun HomeScreenContent(
                 modifier = Modifier
                     .fillMaxHeight()
                     .clickable {
-
+                        showCreateTransaction = true
                     }) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_transfer),
@@ -163,11 +166,17 @@ fun HomeScreenContent(
 
         }
     }
+
+    if (showCreateTransaction) {
+        CreateTransactionView({
+            showCreateTransaction = false
+        })
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateTransactionView(openDate: () -> Unit, openTime: () -> Unit) {
+fun CreateTransactionView(onDismiss : () -> Unit) {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val timeFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
@@ -222,7 +231,7 @@ fun CreateTransactionView(openDate: () -> Unit, openTime: () -> Unit) {
     }
 
 
-    Dialog({}) {
+    Dialog({onDismiss.invoke()}) {
         Surface(
             shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp
         ) {
@@ -382,7 +391,7 @@ fun CreateTransactionView(openDate: () -> Unit, openTime: () -> Unit) {
 @Preview
 private fun TrPreview() {
     ExpenseMonitorTheme() {
-        CreateTransactionView({}, {})
+        CreateTransactionView({})
     }
 }
 
