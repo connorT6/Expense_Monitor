@@ -4,6 +4,7 @@ import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ServerTimestamp
 import com.google.firebase.firestore.Source
@@ -19,6 +20,7 @@ data class Transaction(
     val isSwap: Boolean = false,
     val swapAccountId: String? = null,
     val createdTime: Timestamp = Timestamp.now(),
+    val smsId: String? = null,
     @ServerTimestamp val lastUpdated: Timestamp? = null,
     val deleted: Boolean = false,
     @get:Exclude
@@ -96,7 +98,10 @@ class TransactionRepo private constructor() {
     }
 
 
-    suspend fun
+    suspend fun createTransaction(transaction: Transaction) {
+        val db = FirebaseFirestore.getInstance()
+
+    }
 
     private fun listenToChanges(timestamp: Timestamp) {
         collection.whereGreaterThan(Transaction::lastUpdated.name, timestamp)
