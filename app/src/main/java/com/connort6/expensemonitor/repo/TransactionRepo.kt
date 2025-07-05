@@ -2,6 +2,7 @@ package com.connort6.expensemonitor.repo
 
 import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ServerTimestamp
@@ -86,6 +87,11 @@ class TransactionRepo private constructor() {
                     sortByUpTime.sortedByDescending { it.createdTime }.toSet()
                 }
             }
+    }
+
+    fun getByQuery(queryBuilder: (CollectionReference) -> Query): Set<Transaction> {
+        val query = queryBuilder(collection)
+        return query.get(Source.CACHE).result.toObjects(Transaction::class.java).toSet()
     }
 
 
