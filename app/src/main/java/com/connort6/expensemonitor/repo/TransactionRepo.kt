@@ -99,8 +99,15 @@ class TransactionRepo private constructor() {
 
 
     suspend fun createTransaction(transaction: Transaction) {
-        val db = FirebaseFirestore.getInstance()
+        if (transaction.smsId != null){
+            val existing = collection.whereEqualTo(Transaction::smsId.name, transaction.smsId).get().await().toObjects(Transaction::class.java)
+            if (existing.isNotEmpty()) {
+                return
+            }
+        }
 
+        val docRef = collection.document()
+        docRef.set(transaction.copy(docId = docRef.id)).await()
     }
 
     private fun listenToChanges(timestamp: Timestamp) {
