@@ -1,8 +1,10 @@
 package com.connort6.expensemonitor.ui.views
 
+import android.app.TimePickerDialog
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,26 +21,35 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,11 +68,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -191,12 +204,16 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
 
 
     val selectedDate = datePickerState.selectedDateMillis?.let {
-        showDatePicker = false
         formatter.format(Date(it))
     } ?: formatter.format(calendar.time)
 
 
-    var selectedTime = timeFormatter.format(calendar.time)
+    val selectedTime = timePickerState.hour.let {
+        calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+        calendar.set(Calendar.MINUTE, timePickerState.minute)
+        timeFormatter.format(calendar.time)
+    }
+
 
 
     var categoryText by remember { mutableStateOf("") }
@@ -242,175 +259,233 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
     }
 
 
-    LaunchedEffect(datePickerState) {
-        showDatePicker = false
-    }
 
 
     if (showDatePicker) {
-        DatePicker(
-            state = datePickerState,
-            showModeToggle = false,
-            modifier = Modifier.fillMaxWidth()
-        )
-    } else {
-        Dialog({ onDismiss.invoke() }) {
-            Surface(
-                shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp
+        DatePick(datePickerState, { showDatePicker = false }, {})
+    }
+
+    if (showTimePicker) {
+        TimePickerDialog({
+            showTimePicker = false
+        }, {
+            showTimePicker = false
+        }) {
+            TimePicker(
+                state = timePickerState,
+            )
+        }
+    }
+    Dialog({ onDismiss.invoke() }, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
+        Surface(
+            shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp
+        ) {
+
+            Column(
+                modifier = Modifier.padding(16.dp)
             ) {
 
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Column {
-                        OutlinedTextField(
-                            label = { Text("Account") },
-                            value = accFieldValue,
-                            onValueChange = { newText ->
-                                accText = newText.text
-                                if (!accSelectExpanded) {
-                                    accSelectExpanded = true
-                                }
-                            },
-                            placeholder = { Text("Select Account") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .onFocusChanged { state ->
-                                    accSelectExpanded = state.isFocused
-                                },
-                            trailingIcon = {
-                                if (accText.isNotEmpty()) {
-                                    IconButton(onClick = {
-                                        accText = ""
-                                        accSelectExpanded = false
-                                    }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                    }
-                                }
-                            }
-                        )
-
-                        // Dropdown suggestions
-                        if (accSelectExpanded && accFilterList.isNotEmpty()) {
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 200.dp),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                            ) {
-                                DropDownList(
-                                    accFilterList, accText, { accSelectExpanded = false },
-                                    {
-                                        accText = it
-                                        catFocusRequester.requestFocus()
-                                    })
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-
-                    Column {
-                        OutlinedTextField(
-                            label = { Text("Category") },
-                            value = catFieldValue,
-                            onValueChange = { newText ->
-                                categoryText = newText.text
-                                if (!catSelectExpanded) {
-                                    catSelectExpanded = true
-                                }
-                            },
-                            placeholder = { Text("Select category") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .onFocusChanged { state ->
-                                    catSelectExpanded = state.isFocused
-                                }
-                                .focusRequester(catFocusRequester),
-                            trailingIcon = {
-                                if (categoryText.isNotEmpty()) {
-                                    IconButton(onClick = {
-                                        categoryText = ""
-                                        catSelectExpanded = false
-                                    }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                    }
-                                }
-                            }
-                        )
-
-                        // Dropdown suggestions
-                        if (catSelectExpanded && filteredSuggestions.isNotEmpty()) {
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 200.dp),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                            ) {
-                                DropDownList(
-                                    filteredSuggestions,
-                                    categoryText,
-                                    { catSelectExpanded = false },
-                                    { categoryText = it })
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-
+                Column {
                     OutlinedTextField(
-                        value = selectedDate,
-                        onValueChange = { },
-                        label = { Text("Date") },
-                        readOnly = true,
-                        trailingIcon = {
-                            IconButton(onClick = { showDatePicker = !showDatePicker }) {
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "Select date"
-                                )
-                            }
-                        }
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = selectedTime,
-                        onValueChange = { },
-                        label = { Text("Time") },
-                        readOnly = true,
-                        trailingIcon = {
-                            IconButton(onClick = { showTimePicker = !showTimePicker }) {
-                                Icon(
-                                    imageVector = Icons.Default.Schedule,
-                                    contentDescription = "Select time"
-                                )
-                            }
-                        }
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = "0.0", onValueChange = { typedValue ->
-                            if (typedValue.all { it.isDigit() }) {
-//                                onBalanceEdit.invoke(typedValue)
+                        label = { Text("Account") },
+                        value = accFieldValue,
+                        onValueChange = { newText ->
+                            accText = newText.text
+                            if (!accSelectExpanded) {
+                                accSelectExpanded = true
                             }
                         },
-                        label = {
-                            Text("Amount")
-                        },
-                        keyboardOptions = KeyboardOptions.Default.copy(
-                            keyboardType = KeyboardType.Number
-                        )
+                        placeholder = { Text("Select Account") },
+                        modifier = Modifier
+                            .onFocusChanged { state ->
+                                accSelectExpanded = state.isFocused
+                            },
+                        trailingIcon = {
+                            if (accText.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    accText = ""
+                                    accSelectExpanded = false
+                                }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                }
+                            }
+                        }
                     )
+
+                    // Dropdown suggestions
+                    if (accSelectExpanded && accFilterList.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                        ) {
+                            DropDownList(
+                                accFilterList, accText, { accSelectExpanded = false },
+                                {
+                                    accText = it
+                                    catFocusRequester.requestFocus()
+                                })
+                        }
+                    }
                 }
+                Spacer(Modifier.height(12.dp))
 
+                Column {
+                    OutlinedTextField(
+                        label = { Text("Category") },
+                        value = catFieldValue,
+                        onValueChange = { newText ->
+                            categoryText = newText.text
+                            if (!catSelectExpanded) {
+                                catSelectExpanded = true
+                            }
+                        },
+                        placeholder = { Text("Select category") },
+                        modifier = Modifier
+                            .onFocusChanged { state ->
+                                catSelectExpanded = state.isFocused
+                            }
+                            .focusRequester(catFocusRequester),
+                        trailingIcon = {
+                            if (categoryText.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    categoryText = ""
+                                    catSelectExpanded = false
+                                }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                }
+                            }
+                        }
+                    )
+
+                    // Dropdown suggestions
+                    if (catSelectExpanded && filteredSuggestions.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                        ) {
+                            DropDownList(
+                                filteredSuggestions,
+                                categoryText,
+                                { catSelectExpanded = false },
+                                { categoryText = it })
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = selectedDate,
+                    onValueChange = { },
+                    label = { Text("Date") },
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            showDatePicker = !showDatePicker
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = "Select date"
+                            )
+                        }
+                    }
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = selectedTime,
+                    onValueChange = {  },
+                    label = { Text("Time") },
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = { showTimePicker = !showTimePicker }) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = "Select time"
+                            )
+                        }
+                    }
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = "0.0", onValueChange = { typedValue ->
+                        if (typedValue.all { it.isDigit() }) {
+//                                onBalanceEdit.invoke(typedValue)
+                        }
+                    },
+                    label = {
+                        Text("Amount")
+                    },
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        keyboardType = KeyboardType.Number
+                    )
+                )
             }
+
         }
     }
 
 
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePick(datePickerState: DatePickerState, onDismiss: () -> Unit, onItemSelect: () -> Unit) {
+    DatePickerDialog(
+        onDismissRequest = {
+            // Dismiss the dialog when the user clicks outside the dialog or on the back
+            // button. If you want to disable that functionality, simply use an empty
+            // onDismissRequest.
+            onDismiss.invoke()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss.invoke()
+//                    snackScope.launch {
+//                        snackState.showSnackbar(
+//                            "Selected date timestamp: ${datePickerState.selectedDateMillis}"
+//                        )
+//                    }
+                }
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDismiss.invoke() }) { Text("Cancel") }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+
+@Composable
+fun TimePickerDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        dismissButton = {
+            TextButton(onClick = { onDismiss() }) {
+                Text("Dismiss")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm() }) {
+                Text("OK")
+            }
+        },
+        text = { content() }
+    )
 }
 
 @Composable
@@ -498,5 +573,18 @@ private fun DatePickerPrev() {
             showModeToggle = false
         )
     }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview
+@Composable
+fun TimePickPrev() {
+    val timePickerState = rememberTimePickerState()
+    ExpenseMonitorTheme {
+        TimePickerDialog({}, {}) {
+            TimePicker(
+                state = timePickerState,
+            )
+        }
+    }
 }
