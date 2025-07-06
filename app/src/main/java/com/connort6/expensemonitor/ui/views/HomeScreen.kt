@@ -3,7 +3,6 @@ package com.connort6.expensemonitor.ui.views
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,7 +23,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -44,7 +42,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -67,6 +66,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 @Composable
 fun HomeScreen(navController: NavController) {
@@ -175,31 +175,39 @@ fun HomeScreenContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateTransactionView(onDismiss : () -> Unit) {
-    val formatter = SimpleDateFormat("yyyy-MM-dd")
+fun CreateTransactionView(onDismiss: () -> Unit) {
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val timeFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
     var calendar = Calendar.getInstance()
-    val datePickerState = rememberDatePickerState(calendar.timeInMillis)
+    val datePickerState = rememberDatePickerState()
     val timePickerState = rememberTimePickerState(
         initialHour = calendar.get(Calendar.HOUR),
         initialMinute = calendar.get(Calendar.MINUTE),
     )
 
-    var selectedDate = datePickerState.selectedDateMillis?.let {
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+
+    val selectedDate = datePickerState.selectedDateMillis?.let {
+        showDatePicker = false
         formatter.format(Date(it))
     } ?: formatter.format(calendar.time)
 
 
     var selectedTime = timeFormatter.format(calendar.time)
 
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
 
-    var text by remember { mutableStateOf("") }
-    var isExpanded by remember { mutableStateOf(false) }
+    var categoryText by remember { mutableStateOf("") }
+    var catSelectExpanded by remember { mutableStateOf(false) }
+    var catFieldValue =
+        TextFieldValue(text = categoryText, selection = TextRange(categoryText.length))
+    val catFocusRequester = remember { FocusRequester() }
 
-    var textFieldValue = TextFieldValue(text = text, selection = TextRange(text.length))
+    var accText by remember { mutableStateOf("") }
+    var accSelectExpanded by remember { mutableStateOf(false) }
+    var accFieldValue = TextFieldValue(text = accText, selection = TextRange(accText.length))
 
 
     val suggestions = listOf(
@@ -216,54 +224,66 @@ fun CreateTransactionView(onDismiss : () -> Unit) {
     )
 
     val filteredSuggestions: List<String>
-    if (text.isEmpty()) {
+    if (categoryText.isEmpty()) {
         filteredSuggestions = suggestions
     } else {
         filteredSuggestions = suggestions.filter {
-            it.contains(text, ignoreCase = true) && text.isNotBlank()
+            it.contains(categoryText, ignoreCase = true) && categoryText.isNotBlank()
+        }
+    }
+
+    val accFilterList: List<String>
+    if (accText.isEmpty()) {
+        accFilterList = suggestions
+    } else {
+        accFilterList = suggestions.filter {
+            it.contains(accText, ignoreCase = true) && accText.isNotBlank()
         }
     }
 
 
     LaunchedEffect(datePickerState) {
-
+        showDatePicker = false
     }
 
 
-    Dialog({onDismiss.invoke()}) {
-        Surface(
-            shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp
-        ) {
-            if (showDatePicker) {
-                DatePicker(
-                    state = datePickerState,
-                    showModeToggle = false
-                )
-            } else {
+    if (showDatePicker) {
+        DatePicker(
+            state = datePickerState,
+            showModeToggle = false,
+            modifier = Modifier.fillMaxWidth()
+        )
+    } else {
+        Dialog({ onDismiss.invoke() }) {
+            Surface(
+                shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp
+            ) {
+
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
 
-                    Column() {
+                    Column {
                         OutlinedTextField(
-                            value = textFieldValue,
+                            label = { Text("Account") },
+                            value = accFieldValue,
                             onValueChange = { newText ->
-                                text = newText.text
-                                if (!isExpanded) {
-                                    isExpanded = true
+                                accText = newText.text
+                                if (!accSelectExpanded) {
+                                    accSelectExpanded = true
                                 }
                             },
-                            placeholder = { Text("Select category") },
+                            placeholder = { Text("Select Account") },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .onFocusChanged { state ->
-                                    isExpanded = state.isFocused
+                                    accSelectExpanded = state.isFocused
                                 },
                             trailingIcon = {
-                                if (text.isNotEmpty()) {
+                                if (accText.isNotEmpty()) {
                                     IconButton(onClick = {
-                                        text = ""
-                                        isExpanded = false
+                                        accText = ""
+                                        accSelectExpanded = false
                                     }) {
                                         Icon(Icons.Default.Clear, contentDescription = "Clear")
                                     }
@@ -272,59 +292,66 @@ fun CreateTransactionView(onDismiss : () -> Unit) {
                         )
 
                         // Dropdown suggestions
-                        if (isExpanded && filteredSuggestions.isNotEmpty()) {
+                        if (accSelectExpanded && accFilterList.isNotEmpty()) {
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .heightIn(max = 200.dp),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                             ) {
-                                LazyColumn {
-                                    items(filteredSuggestions.size) { index ->
-                                        val suggestion = filteredSuggestions[index]
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    text = buildAnnotatedString {
-                                                        val startIndex = suggestion.indexOf(
-                                                            text,
-                                                            ignoreCase = true
-                                                        )
-                                                        if (startIndex >= 0) {
-                                                            append(
-                                                                suggestion.substring(
-                                                                    0,
-                                                                    startIndex
-                                                                )
-                                                            )
-                                                            withStyle(
-                                                                style = SpanStyle(
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    color = MaterialTheme.colorScheme.primary
-                                                                )
-                                                            ) {
-                                                                append(
-                                                                    suggestion.substring(
-                                                                        startIndex,
-                                                                        startIndex + text.length
-                                                                    )
-                                                                )
-                                                            }
-                                                            append(suggestion.substring(startIndex + text.length))
-                                                        } else {
-                                                            append(suggestion)
-                                                        }
-                                                    }
-                                                )
-                                            },
-                                            onClick = {
-                                                text = suggestion
-                                                isExpanded = false
-//                                                onSuggestionSelected(suggestion)
-                                            }
-                                        )
+                                DropDownList(
+                                    accFilterList, accText, { accSelectExpanded = false },
+                                    {
+                                        accText = it
+                                        catFocusRequester.requestFocus()
+                                    })
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+
+                    Column {
+                        OutlinedTextField(
+                            label = { Text("Category") },
+                            value = catFieldValue,
+                            onValueChange = { newText ->
+                                categoryText = newText.text
+                                if (!catSelectExpanded) {
+                                    catSelectExpanded = true
+                                }
+                            },
+                            placeholder = { Text("Select category") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusChanged { state ->
+                                    catSelectExpanded = state.isFocused
+                                }
+                                .focusRequester(catFocusRequester),
+                            trailingIcon = {
+                                if (categoryText.isNotEmpty()) {
+                                    IconButton(onClick = {
+                                        categoryText = ""
+                                        catSelectExpanded = false
+                                    }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
                                     }
                                 }
+                            }
+                        )
+
+                        // Dropdown suggestions
+                        if (catSelectExpanded && filteredSuggestions.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                            ) {
+                                DropDownList(
+                                    filteredSuggestions,
+                                    categoryText,
+                                    { catSelectExpanded = false },
+                                    { categoryText = it })
                             }
                         }
                     }
@@ -378,11 +405,69 @@ fun CreateTransactionView(onDismiss : () -> Unit) {
                         )
                     )
                 }
+
             }
         }
     }
 
 
+}
+
+@Composable
+private fun DropDownList(
+    filteredSuggestions: List<String>,
+    text: String,
+    onDismiss: () -> Unit,
+    onItemSelect: (String) -> Unit
+) {
+    var text1 = text
+    LazyColumn {
+        items(filteredSuggestions.size) { index ->
+            val suggestion = filteredSuggestions[index]
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = buildAnnotatedString {
+                            val startIndex = suggestion.indexOf(
+                                text1,
+                                ignoreCase = true
+                            )
+                            if (startIndex >= 0) {
+                                append(
+                                    suggestion.substring(
+                                        0,
+                                        startIndex
+                                    )
+                                )
+                                withStyle(
+                                    style = SpanStyle(
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    append(
+                                        suggestion.substring(
+                                            startIndex,
+                                            startIndex + text1.length
+                                        )
+                                    )
+                                }
+                                append(suggestion.substring(startIndex + text1.length))
+                            } else {
+                                append(suggestion)
+                            }
+                        }
+                    )
+                },
+                onClick = {
+                    text1 = suggestion
+                    onItemSelect.invoke(suggestion)
+                    onDismiss.invoke()
+//                                                onSuggestionSelected(suggestion)
+                }
+            )
+        }
+    }
 }
 
 
