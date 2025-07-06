@@ -48,7 +48,12 @@ import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 
 
-data class AddOrEditPopupData(var dialogShown: Boolean = false, var name: String? = null, var balance: String? = null, var image: String? = null)
+data class AddOrEditPopupData(
+    var dialogShown: Boolean = false,
+    var name: String? = null,
+    var balance: String? = null,
+    var image: String? = null
+)
 
 
 @Composable
@@ -114,7 +119,8 @@ private fun AccountsView(
         ) {
 
             Text(
-                "LKR ${"%.2f".format(accountState.mainAccount.balance)}", modifier = Modifier.weight(1f)
+                "LKR ${"%.2f".format(accountState.mainAccount.balance)}",
+                modifier = Modifier.weight(1f)
             )
 
             Button(
@@ -141,14 +147,23 @@ private fun AccountsView(
 }
 
 @Composable
-fun ListItem(name: String, balance: Double?, iconName: String, defaultIcon: Int, itemId: String, delete: (String) -> Unit) {
+fun ListItem(
+    name: String,
+    balance: Double?,
+    iconName: String,
+    defaultIcon: Int,
+    itemId: String,
+    delete: (String) -> Unit
+) {
     var showDelDialog by remember { mutableStateOf(false) }
 
     Row(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            painterResource(getDrawableResIdFromR(iconName) ?: defaultIcon), null, modifier = Modifier.weight(0.25f)
+            painterResource(getDrawableResIdFromR(iconName) ?: defaultIcon),
+            null,
+            modifier = Modifier.weight(0.25f)
         )
         Spacer(modifier = Modifier.width(8.dp))
 
@@ -190,10 +205,6 @@ fun AddOrEditAccount(
     onOpenIconPicker: (() -> Unit)? = null,
     screenData: AddOrEditPopupData
 ) {
-    val context = LocalContext.current
-
-
-
     Dialog(
         onDismissRequest = { onCancel.invoke() }, properties = DialogProperties(
             dismissOnBackPress = false, dismissOnClickOutside = false
@@ -212,12 +223,16 @@ fun AddOrEditAccount(
                 val resId = getDrawableResIdFromR(screenData.image ?: "")
                 if (resId == null) {
                     Icon(
-                        Icons.Default.Refresh, contentDescription = "", modifier = Modifier.clickable {
+                        Icons.Default.Refresh,
+                        contentDescription = "",
+                        modifier = Modifier.clickable {
                             onOpenIconPicker?.invoke()
                         })
                 } else {
                     Image(
-                        painterResource(resId), contentDescription = "", modifier = Modifier.clickable {
+                        painterResource(resId),
+                        contentDescription = "",
+                        modifier = Modifier.clickable {
                             onOpenIconPicker?.invoke()
                         })
                 }
@@ -246,30 +261,47 @@ fun AddOrEditAccount(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                var buttonsEnabled by remember { mutableStateOf(true) }
-                Row {
-                    Button(
-                        onClick = {
-                            if (text.isEmpty() || (onBalanceEdit != null && balance.isEmpty())) {
-                                Toast.makeText(context, "Empty value", Toast.LENGTH_LONG).show()
-                            }
-                            onAdd.invoke()
-                            buttonsEnabled = false
-                        }, enabled = buttonsEnabled, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                    ) {
-                        Text("Save")
-                    }
-                    Spacer(modifier = Modifier.width(15.dp))
-                    Button(
-                        onClick = {
-                            onCancel.invoke()
-                            buttonsEnabled = false
-                        }, enabled = buttonsEnabled
-                    ) {
-                        Text("Cancel")
-                    }
+                DialogBottomRow(
+                    onAdd,
+                    onCancel
+                ) {
+                    text.isEmpty() || (onBalanceEdit != null && balance.isEmpty())
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun DialogBottomRow(
+    onAdd: () -> Unit,
+    onCancel: () -> Unit,
+    checkAllowed: () -> Boolean
+) {
+    var buttonsEnabled by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    Row {
+        Button(
+            onClick = {
+                if (checkAllowed.invoke()) {
+                    Toast.makeText(context, "Empty value", Toast.LENGTH_LONG).show()
+                }
+                onAdd.invoke()
+                buttonsEnabled = false
+            },
+            enabled = buttonsEnabled,
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+        ) {
+            Text("Save")
+        }
+        Spacer(modifier = Modifier.width(15.dp))
+        Button(
+            onClick = {
+                onCancel.invoke()
+                buttonsEnabled = false
+            }, enabled = buttonsEnabled
+        ) {
+            Text("Cancel")
         }
     }
 }
@@ -296,7 +328,9 @@ fun ShowDeleteDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
                         onClick = {
                             onConfirm.invoke()
                             enabled = false
-                        }, enabled = enabled, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                        },
+                        enabled = enabled,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                     ) {
                         Text("Yes")
                     }

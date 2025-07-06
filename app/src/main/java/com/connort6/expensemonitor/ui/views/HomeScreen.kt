@@ -1,10 +1,8 @@
 package com.connort6.expensemonitor.ui.views
 
-import android.app.TimePickerDialog
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,8 +32,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,13 +39,10 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,12 +67,12 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
+
+data class AutoCompleteObj(val name: String, val id: String, val obj: Any? = null)
 
 @Composable
 fun HomeScreen(navController: NavController) {
@@ -214,19 +207,6 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
         timeFormatter.format(calendar.time)
     }
 
-
-
-    var categoryText by remember { mutableStateOf("") }
-    var catSelectExpanded by remember { mutableStateOf(false) }
-    var catFieldValue =
-        TextFieldValue(text = categoryText, selection = TextRange(categoryText.length))
-    val catFocusRequester = remember { FocusRequester() }
-
-    var accText by remember { mutableStateOf("") }
-    var accSelectExpanded by remember { mutableStateOf(false) }
-    var accFieldValue = TextFieldValue(text = accText, selection = TextRange(accText.length))
-
-
     val suggestions = listOf(
         "apple", "storm", "whisper", "galaxy", "river",
         "canvas", "marble", "echo", "lantern", "crystal",
@@ -238,27 +218,9 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
         "sage", "drift", "mystic", "clover", "solstice",
         "radiant", "silken", "celestial", "wander", "opal",
         "thistle", "ashen", "luminous", "echoes", "serenade"
-    )
-
-    val filteredSuggestions: List<String>
-    if (categoryText.isEmpty()) {
-        filteredSuggestions = suggestions
-    } else {
-        filteredSuggestions = suggestions.filter {
-            it.contains(categoryText, ignoreCase = true) && categoryText.isNotBlank()
-        }
+    ).map {
+        AutoCompleteObj(it, it)
     }
-
-    val accFilterList: List<String>
-    if (accText.isEmpty()) {
-        accFilterList = suggestions
-    } else {
-        accFilterList = suggestions.filter {
-            it.contains(accText, ignoreCase = true) && accText.isNotBlank()
-        }
-    }
-
-
 
 
     if (showDatePicker) {
@@ -276,7 +238,10 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
             )
         }
     }
-    Dialog({ onDismiss.invoke() }, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
+    Dialog(
+        { onDismiss.invoke() },
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
         Surface(
             shape = MaterialTheme.shapes.medium, tonalElevation = 8.dp
         ) {
@@ -285,96 +250,18 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
                 modifier = Modifier.padding(16.dp)
             ) {
 
-                Column {
-                    OutlinedTextField(
-                        label = { Text("Account") },
-                        value = accFieldValue,
-                        onValueChange = { newText ->
-                            accText = newText.text
-                            if (!accSelectExpanded) {
-                                accSelectExpanded = true
-                            }
-                        },
-                        placeholder = { Text("Select Account") },
-                        modifier = Modifier
-                            .onFocusChanged { state ->
-                                accSelectExpanded = state.isFocused
-                            },
-                        trailingIcon = {
-                            if (accText.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    accText = ""
-                                    accSelectExpanded = false
-                                }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                }
-                            }
-                        }
-                    )
+                DropDownOutlineTextField(
+                    "Account",
+                    suggestions
+                )
 
-                    // Dropdown suggestions
-                    if (accSelectExpanded && accFilterList.isNotEmpty()) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 200.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                        ) {
-                            DropDownList(
-                                accFilterList, accText, { accSelectExpanded = false },
-                                {
-                                    accText = it
-                                    catFocusRequester.requestFocus()
-                                })
-                        }
-                    }
-                }
                 Spacer(Modifier.height(12.dp))
 
-                Column {
-                    OutlinedTextField(
-                        label = { Text("Category") },
-                        value = catFieldValue,
-                        onValueChange = { newText ->
-                            categoryText = newText.text
-                            if (!catSelectExpanded) {
-                                catSelectExpanded = true
-                            }
-                        },
-                        placeholder = { Text("Select category") },
-                        modifier = Modifier
-                            .onFocusChanged { state ->
-                                catSelectExpanded = state.isFocused
-                            }
-                            .focusRequester(catFocusRequester),
-                        trailingIcon = {
-                            if (categoryText.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    categoryText = ""
-                                    catSelectExpanded = false
-                                }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                }
-                            }
-                        }
-                    )
-
-                    // Dropdown suggestions
-                    if (catSelectExpanded && filteredSuggestions.isNotEmpty()) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 200.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                        ) {
-                            DropDownList(
-                                filteredSuggestions,
-                                categoryText,
-                                { catSelectExpanded = false },
-                                { categoryText = it })
-                        }
-                    }
-                }
+                DropDownOutlineTextField(
+                    "Category",
+                    suggestions
+//                    catFocusRequester
+                )
                 Spacer(Modifier.height(12.dp))
 
                 OutlinedTextField(
@@ -398,7 +285,7 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
 
                 OutlinedTextField(
                     value = selectedTime,
-                    onValueChange = {  },
+                    onValueChange = { },
                     label = { Text("Time") },
                     readOnly = true,
                     trailingIcon = {
@@ -426,12 +313,110 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
                         keyboardType = KeyboardType.Number
                     )
                 )
+                Spacer(Modifier.height(12.dp))
+
+                DialogBottomRow({}, {}, { true })
             }
 
         }
     }
 
 
+}
+
+@Composable
+private fun DropDownOutlineTextField(
+    label: String,
+    suggestions: List<AutoCompleteObj>,
+    focusRequester: FocusRequester? = null
+) {
+    var text by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+    var fieldValue = TextFieldValue(text = text, selection = TextRange(text.length))
+
+    val filteredSuggestions: List<AutoCompleteObj>
+    if (text.isEmpty()) {
+        filteredSuggestions = suggestions
+    } else {
+        filteredSuggestions = suggestions.filter {
+            it.name.contains(text, ignoreCase = true) && text.isNotBlank()
+        }
+    }
+
+    var modifier = Modifier
+        .onFocusChanged { state ->
+            expanded = state.isFocused
+        }
+    if (focusRequester != null) {
+        modifier = modifier.focusRequester(focusRequester)
+    }
+    Column {
+        OutlinedTextField(
+            label = { Text(label) },
+            singleLine = true,
+            value = fieldValue,
+            onValueChange = { newText ->
+                text = newText.text
+                if (!expanded) {
+                    expanded = true
+                }
+            },
+//            placeholder = { Text("Select category") },
+            modifier = modifier,
+            trailingIcon = {
+                if (text.isNotEmpty()) {
+                    IconButton(onClick = {
+                        text = ""
+                        expanded = false
+                    }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Clear")
+                    }
+                }
+            }
+        )
+
+        // Dropdown suggestions
+        if (expanded && filteredSuggestions.isNotEmpty()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 200.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                DropDownList(
+                    filteredSuggestions,
+                    text,
+                    { expanded = false },
+                    { text = it })
+            }
+        }
+    }
+}
+
+
+@Preview
+@Composable
+private fun DropDownPrev() {
+    ExpenseMonitorTheme {
+        val suggestions = listOf(
+            "apple", "storm", "whisper", "galaxy", "river",
+            "canvas", "marble", "echo", "lantern", "crystal",
+            "ember", "horizon", "cascade", "meadow", "quartz",
+            "serene", "voyage", "zephyr", "harbor", "myth",
+            "forest", "breeze", "shadow", "flame", "aurora",
+            "twilight", "dream", "pulse", "oasis", "spire",
+            "dusk", "glimmer", "velvet", "shard", "ripple",
+            "sage", "drift", "mystic", "clover", "solstice",
+            "radiant", "silken", "celestial", "wander", "opal",
+            "thistle", "ashen", "luminous", "echoes", "serenade"
+        ).map {
+            AutoCompleteObj(it, it)
+        }
+        Column {
+            DropDownOutlineTextField("Account", suggestions)
+        }
+        DropDownOutlineTextField("Account", suggestions)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -490,7 +475,7 @@ fun TimePickerDialog(
 
 @Composable
 private fun DropDownList(
-    filteredSuggestions: List<String>,
+    filteredSuggestions: List<AutoCompleteObj>,
     text: String,
     onDismiss: () -> Unit,
     onItemSelect: (String) -> Unit
@@ -498,7 +483,7 @@ private fun DropDownList(
     var text1 = text
     LazyColumn {
         items(filteredSuggestions.size) { index ->
-            val suggestion = filteredSuggestions[index]
+            val suggestion = filteredSuggestions[index].name
             DropdownMenuItem(
                 text = {
                     Text(
