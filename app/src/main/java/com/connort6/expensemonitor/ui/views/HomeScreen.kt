@@ -72,19 +72,31 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-data class AutoCompleteObj(val name: String, val id: String, val obj: Any? = null)
+data class AutoCompleteObj(val id: String, val name: String, val obj: Any? = null)
 
 @Composable
 fun HomeScreen(navController: NavController) {
 
     val homeScreenViewModel: HomeScreenViewModel = viewModel()
     val accountTotal by homeScreenViewModel.accountTotal.collectAsState()
-    HomeScreenContent(navController, accountTotal.balance)
+    val accounts by homeScreenViewModel.accounts.collectAsState()
+    val categories by homeScreenViewModel.categories.collectAsState()
+
+    HomeScreenContent(
+        navController, accountTotal.balance,
+        accounts.map {
+            AutoCompleteObj(it.id, it.name, it)
+        }, categories.map {
+            AutoCompleteObj(it.id, it.name, it)
+        })
 }
 
 @Composable
 fun HomeScreenContent(
-    navController: NavController, accountTotalBalance: Double
+    navController: NavController,
+    accountTotalBalance: Double,
+    accounts: List<AutoCompleteObj>,
+    categories: List<AutoCompleteObj>
 ) {
     var showCreateTransaction by remember { mutableStateOf(false) }
 
@@ -155,7 +167,6 @@ fun HomeScreenContent(
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .fillMaxHeight()
                     .clickable {
@@ -173,15 +184,19 @@ fun HomeScreenContent(
     }
 
     if (showCreateTransaction) {
-        CreateTransactionView({
-            showCreateTransaction = false
-        })
+        CreateTransactionView(
+            {
+                showCreateTransaction = false
+            }, accounts, categories
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateTransactionView(onDismiss: () -> Unit) {
+fun CreateTransactionView(
+    onDismiss: () -> Unit, accounts: List<AutoCompleteObj>, categories: List<AutoCompleteObj>
+) {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val timeFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
@@ -206,22 +221,6 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
         calendar.set(Calendar.MINUTE, timePickerState.minute)
         timeFormatter.format(calendar.time)
     }
-
-    val suggestions = listOf(
-        "apple", "storm", "whisper", "galaxy", "river",
-        "canvas", "marble", "echo", "lantern", "crystal",
-        "ember", "horizon", "cascade", "meadow", "quartz",
-        "serene", "voyage", "zephyr", "harbor", "myth",
-        "forest", "breeze", "shadow", "flame", "aurora",
-        "twilight", "dream", "pulse", "oasis", "spire",
-        "dusk", "glimmer", "velvet", "shard", "ripple",
-        "sage", "drift", "mystic", "clover", "solstice",
-        "radiant", "silken", "celestial", "wander", "opal",
-        "thistle", "ashen", "luminous", "echoes", "serenade"
-    ).map {
-        AutoCompleteObj(it, it)
-    }
-
 
     if (showDatePicker) {
         DatePick(datePickerState, { showDatePicker = false }, {})
@@ -252,14 +251,14 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
 
                 DropDownOutlineTextField(
                     "Account",
-                    suggestions
+                    accounts
                 )
 
                 Spacer(Modifier.height(12.dp))
 
                 DropDownOutlineTextField(
                     "Category",
-                    suggestions
+                    categories
 //                    catFocusRequester
                 )
                 Spacer(Modifier.height(12.dp))
@@ -310,12 +309,13 @@ fun CreateTransactionView(onDismiss: () -> Unit) {
                         Text("Amount")
                     },
                     keyboardOptions = KeyboardOptions.Default.copy(
+
                         keyboardType = KeyboardType.Number
                     )
                 )
                 Spacer(Modifier.height(12.dp))
 
-                DialogBottomRow({}, {}, { true })
+                DialogBottomRow({onDismiss.invoke()}, {onDismiss.invoke()}, { true })
             }
 
         }
@@ -535,7 +535,34 @@ private fun DropDownList(
 @Preview
 private fun TrPreview() {
     ExpenseMonitorTheme() {
-        CreateTransactionView({})
+        CreateTransactionView(
+            {}, listOf(
+                "apple", "storm", "whisper", "galaxy", "river",
+                "canvas", "marble", "echo", "lantern", "crystal",
+                "ember", "horizon", "cascade", "meadow", "quartz",
+                "serene", "voyage", "zephyr", "harbor", "myth",
+                "forest", "breeze", "shadow", "flame", "aurora",
+                "twilight", "dream", "pulse", "oasis", "spire",
+                "dusk", "glimmer", "velvet", "shard", "ripple",
+                "sage", "drift", "mystic", "clover", "solstice",
+                "radiant", "silken", "celestial", "wander", "opal",
+                "thistle", "ashen", "luminous", "echoes", "serenade"
+            ).map {
+                AutoCompleteObj(it, it)
+            }, listOf(
+                "apple", "storm", "whisper", "galaxy", "river",
+                "canvas", "marble", "echo", "lantern", "crystal",
+                "ember", "horizon", "cascade", "meadow", "quartz",
+                "serene", "voyage", "zephyr", "harbor", "myth",
+                "forest", "breeze", "shadow", "flame", "aurora",
+                "twilight", "dream", "pulse", "oasis", "spire",
+                "dusk", "glimmer", "velvet", "shard", "ripple",
+                "sage", "drift", "mystic", "clover", "solstice",
+                "radiant", "silken", "celestial", "wander", "opal",
+                "thistle", "ashen", "luminous", "echoes", "serenade"
+            ).map {
+                AutoCompleteObj(it, it)
+            })
     }
 }
 
@@ -543,7 +570,34 @@ private fun TrPreview() {
 @Preview
 private fun HomePreview() {
     ExpenseMonitorTheme {
-        HomeScreenContent(rememberNavController(), 12345.67)
+        HomeScreenContent(
+            rememberNavController(), 12345.67, listOf(
+                "apple", "storm", "whisper", "galaxy", "river",
+                "canvas", "marble", "echo", "lantern", "crystal",
+                "ember", "horizon", "cascade", "meadow", "quartz",
+                "serene", "voyage", "zephyr", "harbor", "myth",
+                "forest", "breeze", "shadow", "flame", "aurora",
+                "twilight", "dream", "pulse", "oasis", "spire",
+                "dusk", "glimmer", "velvet", "shard", "ripple",
+                "sage", "drift", "mystic", "clover", "solstice",
+                "radiant", "silken", "celestial", "wander", "opal",
+                "thistle", "ashen", "luminous", "echoes", "serenade"
+            ).map {
+                AutoCompleteObj(it, it)
+            }, listOf(
+                "apple", "storm", "whisper", "galaxy", "river",
+                "canvas", "marble", "echo", "lantern", "crystal",
+                "ember", "horizon", "cascade", "meadow", "quartz",
+                "serene", "voyage", "zephyr", "harbor", "myth",
+                "forest", "breeze", "shadow", "flame", "aurora",
+                "twilight", "dream", "pulse", "oasis", "spire",
+                "dusk", "glimmer", "velvet", "shard", "ripple",
+                "sage", "drift", "mystic", "clover", "solstice",
+                "radiant", "silken", "celestial", "wander", "opal",
+                "thistle", "ashen", "luminous", "echoes", "serenade"
+            ).map {
+                AutoCompleteObj(it, it)
+            })
     }
 }
 
