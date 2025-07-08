@@ -289,9 +289,7 @@ fun DialogBottomRow(
                 onAdd.invoke()
                 buttonsEnabled = false
             },
-            enabled = buttonsEnabled,
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-        ) {
+            enabled = buttonsEnabled) {
             Text("Save")
         }
         Spacer(modifier = Modifier.width(15.dp))
@@ -299,7 +297,9 @@ fun DialogBottomRow(
             onClick = {
                 onCancel.invoke()
                 buttonsEnabled = false
-            }, enabled = buttonsEnabled
+            }, enabled = buttonsEnabled,
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+
         ) {
             Text("Cancel")
         }
@@ -329,9 +329,7 @@ fun ShowDeleteDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
                             onConfirm.invoke()
                             enabled = false
                         },
-                        enabled = enabled,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                    ) {
+                        enabled = enabled) {
                         Text("Yes")
                     }
                     Spacer(modifier = Modifier.width(15.dp))
@@ -339,7 +337,8 @@ fun ShowDeleteDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
                         onClick = {
                             onCancel.invoke()
                             enabled = false
-                        }, enabled = enabled
+                        }, enabled = enabled,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                     ) {
                         Text("No")
                     }

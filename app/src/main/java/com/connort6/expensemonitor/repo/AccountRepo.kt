@@ -8,6 +8,7 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ServerTimestamp
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.Transaction
 import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -212,8 +213,37 @@ class AccountRepo private constructor(
         Log.d("REPO", "deleteAccount: ")
     }
 
-    suspend fun updateAccountBalance(addValue: Double, docId: String) {
+    suspend fun updateAccountBalance(addValue: Double, docId: String, transaction: Transaction? = null) {
+        if (transaction != null) {
+            updateAccountBalance(docId, transaction, addValue)
+            return
+        }
+        val db = FirebaseFirestore.getInstance()
+        db.runTransaction { tr ->
+            updateAccountBalance(docId, tr, addValue)
+        }.await()
 
+    }
+
+    private fun updateAccountBalance(
+        docId: String,
+        transaction: Transaction,
+        addValue: Double
+    ) {
+        val docRef = collection.document(docId)
+        val account = transaction.get(docRef).toObject(Account::class.java)
+        val mainAcc = transaction.get(accountRef).toObject(Account::class.java)
+        if (account == null || mainAcc == null) {
+            return
+        }
+        val mainBal = mainAcc.balance + addValue
+        transaction.set(
+            docRef,
+            account.copy(balance = account.balance + addValue, lastUpdated = null)
+        )
+        transaction.set(
+            accountRef, AccBalUpdate(mainBal), SetOptions.merge()
+        )
     }
 
     companion object {

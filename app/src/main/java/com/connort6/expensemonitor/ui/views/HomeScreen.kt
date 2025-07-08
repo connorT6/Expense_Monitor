@@ -66,6 +66,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
+import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -88,7 +89,10 @@ fun HomeScreen(navController: NavController) {
             AutoCompleteObj(it.id, it.name, it)
         }, categories.map {
             AutoCompleteObj(it.id, it.name, it)
-        })
+        }
+    ) {
+
+    }
 }
 
 @Composable
@@ -96,7 +100,8 @@ fun HomeScreenContent(
     navController: NavController,
     accountTotalBalance: Double,
     accounts: List<AutoCompleteObj>,
-    categories: List<AutoCompleteObj>
+    categories: List<AutoCompleteObj>,
+    onSave: () -> Unit
 ) {
     var showCreateTransaction by remember { mutableStateOf(false) }
 
@@ -185,9 +190,10 @@ fun HomeScreenContent(
 
     if (showCreateTransaction) {
         CreateTransactionView(
-            {
+            accounts, categories,
+            onSave, {
                 showCreateTransaction = false
-            }, accounts, categories
+            }
         )
     }
 }
@@ -195,7 +201,12 @@ fun HomeScreenContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTransactionView(
-    onDismiss: () -> Unit, accounts: List<AutoCompleteObj>, categories: List<AutoCompleteObj>
+    accounts: List<AutoCompleteObj>,
+    categories: List<AutoCompleteObj>,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+    onAccountSelect: (AutoCompleteObj) -> Unit,
+    onCategorySelect: (AutoCompleteObj) -> Unit
 ) {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val timeFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
@@ -238,7 +249,7 @@ fun CreateTransactionView(
         }
     }
     Dialog(
-        { onDismiss.invoke() },
+        onSave,
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
     ) {
         Surface(
@@ -251,15 +262,20 @@ fun CreateTransactionView(
 
                 DropDownOutlineTextField(
                     "Account",
-                    accounts
+                    accounts,
+                    {
+                        onAccountSelect.invoke(it)
+                    }
                 )
 
                 Spacer(Modifier.height(12.dp))
 
                 DropDownOutlineTextField(
                     "Category",
-                    categories
-//                    catFocusRequester
+                    categories,
+                    {
+                        onCategorySelect.invoke(it)
+                    }
                 )
                 Spacer(Modifier.height(12.dp))
 
@@ -315,19 +331,17 @@ fun CreateTransactionView(
                 )
                 Spacer(Modifier.height(12.dp))
 
-                DialogBottomRow({onDismiss.invoke()}, {onDismiss.invoke()}, { true })
+                DialogBottomRow(onSave, onDismiss, { true })
             }
-
         }
     }
-
-
 }
 
 @Composable
 private fun DropDownOutlineTextField(
     label: String,
     suggestions: List<AutoCompleteObj>,
+    onItemSelect: (AutoCompleteObj) -> Unit,
     focusRequester: FocusRequester? = null
 ) {
     var text by remember { mutableStateOf("") }
@@ -387,7 +401,10 @@ private fun DropDownOutlineTextField(
                     filteredSuggestions,
                     text,
                     { expanded = false },
-                    { text = it })
+                    {
+                        text = it.name
+                        onItemSelect.invoke(it)
+                    })
             }
         }
     }
@@ -413,9 +430,9 @@ private fun DropDownPrev() {
             AutoCompleteObj(it, it)
         }
         Column {
-            DropDownOutlineTextField("Account", suggestions)
+            DropDownOutlineTextField("Account", suggestions, {})
         }
-        DropDownOutlineTextField("Account", suggestions)
+        DropDownOutlineTextField("Account", suggestions, {})
     }
 }
 
@@ -478,12 +495,13 @@ private fun DropDownList(
     filteredSuggestions: List<AutoCompleteObj>,
     text: String,
     onDismiss: () -> Unit,
-    onItemSelect: (String) -> Unit
+    onItemSelect: (AutoCompleteObj) -> Unit
 ) {
     var text1 = text
     LazyColumn {
         items(filteredSuggestions.size) { index ->
-            val suggestion = filteredSuggestions[index].name
+            val currentObj = filteredSuggestions[index]
+            val suggestion = currentObj.name
             DropdownMenuItem(
                 text = {
                     Text(
@@ -521,7 +539,7 @@ private fun DropDownList(
                 },
                 onClick = {
                     text1 = suggestion
-                    onItemSelect.invoke(suggestion)
+                    onItemSelect.invoke(currentObj)
                     onDismiss.invoke()
 //                                                onSuggestionSelected(suggestion)
                 }
@@ -536,7 +554,7 @@ private fun DropDownList(
 private fun TrPreview() {
     ExpenseMonitorTheme() {
         CreateTransactionView(
-            {}, listOf(
+            listOf(
                 "apple", "storm", "whisper", "galaxy", "river",
                 "canvas", "marble", "echo", "lantern", "crystal",
                 "ember", "horizon", "cascade", "meadow", "quartz",
@@ -562,7 +580,7 @@ private fun TrPreview() {
                 "thistle", "ashen", "luminous", "echoes", "serenade"
             ).map {
                 AutoCompleteObj(it, it)
-            })
+            }, {}, {}, {}, {})
     }
 }
 
@@ -597,7 +615,9 @@ private fun HomePreview() {
                 "thistle", "ashen", "luminous", "echoes", "serenade"
             ).map {
                 AutoCompleteObj(it, it)
-            })
+            }) {
+
+        }
     }
 }
 

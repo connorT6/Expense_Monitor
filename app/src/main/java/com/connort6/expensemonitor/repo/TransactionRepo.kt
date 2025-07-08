@@ -3,6 +3,7 @@ package com.connort6.expensemonitor.repo
 import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -108,6 +109,10 @@ class TransactionRepo private constructor() {
 
         val docRef = collection.document()
         docRef.set(transaction.copy(docId = docRef.id)).await()
+    }
+
+    suspend fun getDocRef(): DocumentReference {
+        return collection.document()
     }
 
     private fun listenToChanges(timestamp: Timestamp) {
