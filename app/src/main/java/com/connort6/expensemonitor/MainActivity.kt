@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("homeScreen") {
                             HomeScreen(
-                                navController
+                                navController, viewModel()
                             )
                         }
                         composable("categoryScreen") {

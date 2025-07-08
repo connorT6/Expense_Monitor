@@ -66,7 +66,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
-import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -76,33 +75,35 @@ import java.util.Locale
 data class AutoCompleteObj(val id: String, val name: String, val obj: Any? = null)
 
 @Composable
-fun HomeScreen(navController: NavController) {
+fun HomeScreen(
+    navController: NavController,
+    viewModel: HomeScreenViewModel? = null,
+) {
 
-    val homeScreenViewModel: HomeScreenViewModel = viewModel()
+    val homeScreenViewModel: IHomeScreenViewModel
+
+    if (viewModel == null) {
+        homeScreenViewModel = MockHomeScreenViewModel()
+    }else{
+        homeScreenViewModel = viewModel
+    }
+
     val accountTotal by homeScreenViewModel.accountTotal.collectAsState()
     val accounts by homeScreenViewModel.accounts.collectAsState()
     val categories by homeScreenViewModel.categories.collectAsState()
 
-    HomeScreenContent(
-        navController, accountTotal.balance,
-        accounts.map {
-            AutoCompleteObj(it.id, it.name, it)
-        }, categories.map {
-            AutoCompleteObj(it.id, it.name, it)
-        }
-    ) {
+//    HomeScreenContent(
+//        navController, ,
+//        accounts.map {
+//            AutoCompleteObj(it.id, it.name, it)
+//        }, categories.map {
+//            AutoCompleteObj(it.id, it.name, it)
+//        }
+//    ) {
+//
+//    }
 
-    }
-}
 
-@Composable
-fun HomeScreenContent(
-    navController: NavController,
-    accountTotalBalance: Double,
-    accounts: List<AutoCompleteObj>,
-    categories: List<AutoCompleteObj>,
-    onSave: () -> Unit
-) {
     var showCreateTransaction by remember { mutableStateOf(false) }
 
     Column(
@@ -122,7 +123,7 @@ fun HomeScreenContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "LKR ${"%.2f".format(accountTotalBalance)}",
+                    text = "LKR ${"%.2f".format(accountTotal.balance)}",
                     fontSize = 20.sp,
                     modifier = Modifier.weight(1f)
                 )
@@ -189,14 +190,15 @@ fun HomeScreenContent(
     }
 
     if (showCreateTransaction) {
-        CreateTransactionView(
-            accounts, categories,
-            onSave, {
-                showCreateTransaction = false
-            }
-        )
+//        CreateTransactionView(
+//            accounts, categories,
+//            onSave, {
+//                showCreateTransaction = false
+//            }
+//        )
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -588,36 +590,7 @@ private fun TrPreview() {
 @Preview
 private fun HomePreview() {
     ExpenseMonitorTheme {
-        HomeScreenContent(
-            rememberNavController(), 12345.67, listOf(
-                "apple", "storm", "whisper", "galaxy", "river",
-                "canvas", "marble", "echo", "lantern", "crystal",
-                "ember", "horizon", "cascade", "meadow", "quartz",
-                "serene", "voyage", "zephyr", "harbor", "myth",
-                "forest", "breeze", "shadow", "flame", "aurora",
-                "twilight", "dream", "pulse", "oasis", "spire",
-                "dusk", "glimmer", "velvet", "shard", "ripple",
-                "sage", "drift", "mystic", "clover", "solstice",
-                "radiant", "silken", "celestial", "wander", "opal",
-                "thistle", "ashen", "luminous", "echoes", "serenade"
-            ).map {
-                AutoCompleteObj(it, it)
-            }, listOf(
-                "apple", "storm", "whisper", "galaxy", "river",
-                "canvas", "marble", "echo", "lantern", "crystal",
-                "ember", "horizon", "cascade", "meadow", "quartz",
-                "serene", "voyage", "zephyr", "harbor", "myth",
-                "forest", "breeze", "shadow", "flame", "aurora",
-                "twilight", "dream", "pulse", "oasis", "spire",
-                "dusk", "glimmer", "velvet", "shard", "ripple",
-                "sage", "drift", "mystic", "clover", "solstice",
-                "radiant", "silken", "celestial", "wander", "opal",
-                "thistle", "ashen", "luminous", "echoes", "serenade"
-            ).map {
-                AutoCompleteObj(it, it)
-            }) {
-
-        }
+        HomeScreen(rememberNavController())
     }
 }
 

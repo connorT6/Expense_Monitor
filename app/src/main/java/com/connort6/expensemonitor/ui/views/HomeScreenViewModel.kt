@@ -14,20 +14,31 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-open class HomeScreenViewModel : ViewModel() {
+interface IHomeScreenViewModel {
+    val accounts: StateFlow<List<Account>>
+    val categories: StateFlow<List<Category>>
+    val accountTotal: StateFlow<Account>
+    fun saveTransaction(transaction: Transaction)
+}
+
+open class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
+
+    // Interface implementations
+    override val accounts: StateFlow<List<Account>>
+        get() = _accounts.asStateFlow()
+    override val categories: StateFlow<List<Category>>
+        get() = _categories.asStateFlow()
+    override val accountTotal: StateFlow<Account>
+        get() = _accountTotal.asStateFlow()
 
     private val db = FirebaseFirestore.getInstance()
 
     private val accountRepo = AccountRepo.getInstance()
     private val _accountTotal = MutableStateFlow(Account())
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
-    open val accounts = _accounts.asStateFlow()
-
     private val categoryRepo = CategoryRepo.getInstance()
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
-    open val categories = _categories.asStateFlow()
 
-    open val accountTotal = _accountTotal.asStateFlow()
     private val transactionRepo = TransactionRepo.getInstance()
 
     init {
@@ -48,47 +59,43 @@ open class HomeScreenViewModel : ViewModel() {
         }
     }
 
-    open fun saveTransaction(transaction: Transaction) {
+    override fun saveTransaction(transaction: Transaction) {
         if (transaction.account == null) {
             return
         }
         val transactionCopy = transaction.copy(
             accountId = transaction.account!!.id,
         )
-        viewModelScope.launch {
-            db.runTransaction ({ tr ->
-                accountRepo.updateAccount(transactionCopy.account!!)
-            })
-            transactionRepo.saveTransaction(transaction)
-        }
+//        viewModelScope.launch {
+//            db.runTransaction ({ tr ->
+//                accountRepo.updateAccount(transactionCopy.account!!)
+//            })
+//            transactionRepo.saveTransaction(transaction)
+//        }
     }
 }
-
-class MockHomeScreenViewModel : HomeScreenViewModel() {
+class MockHomeScreenViewModel : IHomeScreenViewModel {
 
     // Override properties from HomeScreenViewModel
-    private val _mockAccountTotal = MutableStateFlow(
+    override val accountTotal: StateFlow<Account> = MutableStateFlow(
         Account(id = "total", name = "Total Balance", balance = 1500.75) // Use your Account data class
-    )
-    override val accountTotal: StateFlow<Account> = _mockAccountTotal
+    ).asStateFlow()
 
-    private val _mockAccounts = MutableStateFlow<List<Account>>(
+    override val accounts: StateFlow<List<Account>> = MutableStateFlow<List<Account>>(
         listOf(
             Account(id = "1", name = "Savings", balance = 1000.0),
             Account(id = "2", name = "Checking", balance = 500.75)
         )
     )
-    override val accounts: StateFlow<List<Account>> = _mockAccounts
-
-    private val _mockCategories = MutableStateFlow<List<Category>>(
+    .asStateFlow()
+    override val categories: StateFlow<List<Category>> = MutableStateFlow<List<Category>>(
         listOf(
             Category(id = "cat1", name = "Groceries"),
             Category(id = "cat2", name = "Salary"),
             Category(id = "cat3", name = "Entertainment")
         )
     )
-    override val categories: StateFlow<List<Category>> = _mockCategories
-
+    .asStateFlow()
     // The init block of the parent HomeScreenViewModel will run unless you
     // prevent it or ensure its dependencies are mocked if it tries to access them.
     // Since we're overriding the flows directly with mock data,
