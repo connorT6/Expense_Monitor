@@ -18,10 +18,14 @@ interface IHomeScreenViewModel {
     val accounts: StateFlow<List<Account>>
     val categories: StateFlow<List<Category>>
     val accountTotal: StateFlow<Account>
+    val selectedAccount: StateFlow<Account?>
+    val selectedCategory: StateFlow<Category?>
     fun saveTransaction(transaction: Transaction)
+    fun selectAccount(account: Account)
+    fun selectCategory(category: Category)
 }
 
-open class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
+class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 
     // Interface implementations
     override val accounts: StateFlow<List<Account>>
@@ -30,6 +34,12 @@ open class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
         get() = _categories.asStateFlow()
     override val accountTotal: StateFlow<Account>
         get() = _accountTotal.asStateFlow()
+
+    override val selectedAccount: StateFlow<Account?>
+        get() = _selectedAccount.asStateFlow()
+
+    override val selectedCategory: StateFlow<Category?>
+        get() = _selectedCategory.asStateFlow()
 
     private val db = FirebaseFirestore.getInstance()
 
@@ -40,6 +50,8 @@ open class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
 
     private val transactionRepo = TransactionRepo.getInstance()
+    private val _selectedAccount = MutableStateFlow<Account?>(null)
+    private val _selectedCategory = MutableStateFlow<Category?>(null)
 
     init {
         viewModelScope.launch {
@@ -73,18 +85,32 @@ open class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 //            transactionRepo.saveTransaction(transaction)
 //        }
     }
+
+    override fun selectAccount(account: Account) {
+        _selectedAccount.value = account
+    }
+
+    override fun selectCategory(category: Category) {
+        _selectedCategory.value = category
+    }
 }
+
+
+
 class MockHomeScreenViewModel : IHomeScreenViewModel {
 
     // Override properties from HomeScreenViewModel
-    override val accountTotal: StateFlow<Account> = MutableStateFlow(
-        Account(id = "total", name = "Total Balance", balance = 1500.75) // Use your Account data class
-    ).asStateFlow()
+    override val accountTotal: StateFlow<Account> =
+        MutableStateFlow(
+            Account(id = "total", name = "Total Balance", balance = 1500.75) // Use your Account data class
+        )
+            .asStateFlow()
 
     override val accounts: StateFlow<List<Account>> = MutableStateFlow<List<Account>>(
         listOf(
             Account(id = "1", name = "Savings", balance = 1000.0),
-            Account(id = "2", name = "Checking", balance = 500.75)
+            Account(id = "2", name = "Checking", balance = 500.75),
+            Account(id = "3", name = "Investment", balance = 12050.20)
         )
     )
     .asStateFlow()
@@ -92,7 +118,10 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
         listOf(
             Category(id = "cat1", name = "Groceries"),
             Category(id = "cat2", name = "Salary"),
-            Category(id = "cat3", name = "Entertainment")
+            Category(id = "cat3", name = "Entertainment"),
+            Category(id = "cat4", name = "Utilities"),
+            Category(id = "cat5", name = "Rent/Mortgage"),
+            Category(id = "cat6", name = "Transportation")
         )
     )
     .asStateFlow()
@@ -112,6 +141,16 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
         // _mockAccountTotal.value = _mockAccountTotal.value.copy(
         //     balance = _mockAccountTotal.value.balance - transaction.amount
         // )
+    }
+
+    override val selectedAccount: StateFlow<Account?> = MutableStateFlow<Account?>(null).asStateFlow()
+    override fun selectAccount(account: Account) {
+        println("MockPreview: selectAccount called with $account")
+    }
+
+    override val selectedCategory: StateFlow<Category?> = MutableStateFlow<Category?>(null).asStateFlow()
+    override fun selectCategory(category: Category) {
+        println("MockPreview: selectCategory called with $category")
     }
 
     // Add any other functions that your UI might call and need mock behavior for.

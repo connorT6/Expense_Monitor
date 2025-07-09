@@ -62,10 +62,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
+import com.connort6.expensemonitor.repo.Account
+import com.connort6.expensemonitor.repo.Category
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -77,20 +78,10 @@ data class AutoCompleteObj(val id: String, val name: String, val obj: Any? = nul
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: HomeScreenViewModel? = null,
+    homeScreenViewModel: IHomeScreenViewModel,
 ) {
 
-    val homeScreenViewModel: IHomeScreenViewModel
-
-    if (viewModel == null) {
-        homeScreenViewModel = MockHomeScreenViewModel()
-    }else{
-        homeScreenViewModel = viewModel
-    }
-
     val accountTotal by homeScreenViewModel.accountTotal.collectAsState()
-    val accounts by homeScreenViewModel.accounts.collectAsState()
-    val categories by homeScreenViewModel.categories.collectAsState()
 
 //    HomeScreenContent(
 //        navController, ,
@@ -190,12 +181,10 @@ fun HomeScreen(
     }
 
     if (showCreateTransaction) {
-//        CreateTransactionView(
-//            accounts, categories,
-//            onSave, {
-//                showCreateTransaction = false
-//            }
-//        )
+        CreateTransactionView(
+            homeScreenViewModel,
+            onDismiss = { showCreateTransaction = false }
+        )
     }
 }
 
@@ -203,17 +192,16 @@ fun HomeScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTransactionView(
-    accounts: List<AutoCompleteObj>,
-    categories: List<AutoCompleteObj>,
-    onSave: () -> Unit,
-    onDismiss: () -> Unit,
-    onAccountSelect: (AutoCompleteObj) -> Unit,
-    onCategorySelect: (AutoCompleteObj) -> Unit
+    homeScreenViewModel: IHomeScreenViewModel,
+    onDismiss: () -> Unit
 ) {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val timeFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
-    var calendar = Calendar.getInstance()
+    val accounts by homeScreenViewModel.accounts.collectAsState()
+    val categories by homeScreenViewModel.categories.collectAsState()
+
+    val calendar = Calendar.getInstance()
     val datePickerState = rememberDatePickerState()
     val timePickerState = rememberTimePickerState(
         initialHour = calendar.get(Calendar.HOUR),
@@ -223,11 +211,10 @@ fun CreateTransactionView(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
-
-    val selectedDate = datePickerState.selectedDateMillis?.let {
-        formatter.format(Date(it))
-    } ?: formatter.format(calendar.time)
-
+    val selectedDate by homeScreenViewModel.selectedDate.collectAsState()
+//    val selectedDate = datePickerState.selectedDateMillis?.let {
+//        formatter.format(Date(it))
+//    } ?: formatter.format(calendar.time)
 
     val selectedTime = timePickerState.hour.let {
         calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
@@ -236,7 +223,13 @@ fun CreateTransactionView(
     }
 
     if (showDatePicker) {
-        DatePick(datePickerState, { showDatePicker = false }, {})
+        DatePick(datePickerState, {
+            showDatePicker = false
+            val newDate = datePickerState.selectedDateMillis?.let {
+                formatter.format(Date(it))
+            } ?: formatter.format(calendar.time)
+            homeScreenViewModel.selectDate(newDate)
+        }, {})
     }
 
     if (showTimePicker) {
@@ -251,7 +244,7 @@ fun CreateTransactionView(
         }
     }
     Dialog(
-        onSave,
+        onDismiss,
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
     ) {
         Surface(
@@ -264,9 +257,11 @@ fun CreateTransactionView(
 
                 DropDownOutlineTextField(
                     "Account",
-                    accounts,
+                    accounts.map {
+                        AutoCompleteObj(it.id, it.name, it)
+                    },
                     {
-                        onAccountSelect.invoke(it)
+                        homeScreenViewModel.selectAccount(it.obj as Account)
                     }
                 )
 
@@ -274,9 +269,11 @@ fun CreateTransactionView(
 
                 DropDownOutlineTextField(
                     "Category",
-                    categories,
+                    categories.map {
+                        AutoCompleteObj(it.id, it.name, it)
+                    },
                     {
-                        onCategorySelect.invoke(it)
+                        homeScreenViewModel.selectCategory(it.obj as Category)
                     }
                 )
                 Spacer(Modifier.height(12.dp))
@@ -333,7 +330,7 @@ fun CreateTransactionView(
                 )
                 Spacer(Modifier.height(12.dp))
 
-                DialogBottomRow(onSave, onDismiss, { true })
+                DialogBottomRow({}, onDismiss, { true })
             }
         }
     }
@@ -555,34 +552,7 @@ private fun DropDownList(
 @Preview
 private fun TrPreview() {
     ExpenseMonitorTheme() {
-        CreateTransactionView(
-            listOf(
-                "apple", "storm", "whisper", "galaxy", "river",
-                "canvas", "marble", "echo", "lantern", "crystal",
-                "ember", "horizon", "cascade", "meadow", "quartz",
-                "serene", "voyage", "zephyr", "harbor", "myth",
-                "forest", "breeze", "shadow", "flame", "aurora",
-                "twilight", "dream", "pulse", "oasis", "spire",
-                "dusk", "glimmer", "velvet", "shard", "ripple",
-                "sage", "drift", "mystic", "clover", "solstice",
-                "radiant", "silken", "celestial", "wander", "opal",
-                "thistle", "ashen", "luminous", "echoes", "serenade"
-            ).map {
-                AutoCompleteObj(it, it)
-            }, listOf(
-                "apple", "storm", "whisper", "galaxy", "river",
-                "canvas", "marble", "echo", "lantern", "crystal",
-                "ember", "horizon", "cascade", "meadow", "quartz",
-                "serene", "voyage", "zephyr", "harbor", "myth",
-                "forest", "breeze", "shadow", "flame", "aurora",
-                "twilight", "dream", "pulse", "oasis", "spire",
-                "dusk", "glimmer", "velvet", "shard", "ripple",
-                "sage", "drift", "mystic", "clover", "solstice",
-                "radiant", "silken", "celestial", "wander", "opal",
-                "thistle", "ashen", "luminous", "echoes", "serenade"
-            ).map {
-                AutoCompleteObj(it, it)
-            }, {}, {}, {}, {})
+        CreateTransactionView(MockHomeScreenViewModel()) {}
     }
 }
 
@@ -590,7 +560,7 @@ private fun TrPreview() {
 @Preview
 private fun HomePreview() {
     ExpenseMonitorTheme {
-        HomeScreen(rememberNavController())
+        HomeScreen(rememberNavController(), MockHomeScreenViewModel())
     }
 }
 

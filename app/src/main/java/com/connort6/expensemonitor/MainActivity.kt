@@ -16,6 +16,7 @@ import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import com.connort6.expensemonitor.ui.views.AccountScreen
 import com.connort6.expensemonitor.ui.views.CategoryScreen
 import com.connort6.expensemonitor.ui.views.HomeScreen
+import com.connort6.expensemonitor.ui.views.HomeScreenViewModel
 import com.connort6.expensemonitor.ui.views.IconPicker
 import com.connort6.expensemonitor.ui.views.IconPickerViewModel
 import com.connort6.expensemonitor.ui.views.SmsReaderScreen
@@ -59,8 +60,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("homeScreen") {
+                            val homeScreenViewModel: HomeScreenViewModel = viewModel()
                             HomeScreen(
-                                navController, viewModel()
+                                navController, homeScreenViewModel,
                             )
                         }
                         composable("categoryScreen") {
