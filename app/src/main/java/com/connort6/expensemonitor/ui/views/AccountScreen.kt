@@ -283,7 +283,7 @@ fun DialogBottomRow(
     Row {
         Button(
             onClick = {
-                if (checkAllowed.invoke()) {
+                if (!checkAllowed.invoke()) {
                     Toast.makeText(context, "Empty value", Toast.LENGTH_LONG).show()
                 }
                 onAdd.invoke()
