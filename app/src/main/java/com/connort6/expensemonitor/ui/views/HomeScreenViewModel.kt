@@ -11,8 +11,12 @@ import com.connort6.expensemonitor.repo.TransactionRepo
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import java.time.LocalTime
+import java.math.BigDecimal
+import java.util.Date
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 interface IHomeScreenViewModel {
     val accounts: StateFlow<List<Account>>
@@ -20,9 +24,16 @@ interface IHomeScreenViewModel {
     val accountTotal: StateFlow<Account>
     val selectedAccount: StateFlow<Account?>
     val selectedCategory: StateFlow<Category?>
+    val selectedDate: StateFlow<Calendar>
+    val selectedTime: StateFlow<LocalTime>
+    val transactionAmount: StateFlow<BigDecimal>
+    fun createTransaction()
     fun saveTransaction(transaction: Transaction)
     fun selectAccount(account: Account)
     fun selectCategory(category: Category)
+    fun selectDate(calendar: Calendar)
+    fun selectTime(time: LocalTime)
+    fun setTransactionAmount(amount: BigDecimal)
 }
 
 class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
@@ -41,6 +52,15 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     override val selectedCategory: StateFlow<Category?>
         get() = _selectedCategory.asStateFlow()
 
+    override val selectedDate: StateFlow<Calendar>
+        get() = _selectedDate.asStateFlow()
+
+    override val selectedTime: StateFlow<LocalTime>
+        get() = _selectedTime.asStateFlow()
+
+    override val transactionAmount: StateFlow<BigDecimal>
+        get() = _transactionAmount.asStateFlow()
+
     private val db = FirebaseFirestore.getInstance()
 
     private val accountRepo = AccountRepo.getInstance()
@@ -52,6 +72,9 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val transactionRepo = TransactionRepo.getInstance()
     private val _selectedAccount = MutableStateFlow<Account?>(null)
     private val _selectedCategory = MutableStateFlow<Category?>(null)
+    private val _selectedDate = MutableStateFlow(Calendar.getInstance())
+    private val _selectedTime = MutableStateFlow(LocalTime.now())
+    private val _transactionAmount = MutableStateFlow(BigDecimal.ZERO)
 
     init {
         viewModelScope.launch {
@@ -86,12 +109,32 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 //        }
     }
 
+    override fun createTransaction() {
+        _selectedAccount.value = null
+        _selectedCategory.value = null
+        _selectedDate.value = Calendar.getInstance()
+        _selectedTime.value = LocalTime.now()
+        _transactionAmount.value = BigDecimal.ZERO
+    }
+
     override fun selectAccount(account: Account) {
         _selectedAccount.value = account
     }
 
     override fun selectCategory(category: Category) {
         _selectedCategory.value = category
+    }
+
+    override fun selectDate(calendar: Calendar) {
+        _selectedDate.value = calendar
+    }
+
+    override fun selectTime(time: LocalTime) {
+        _selectedTime.value = time
+    }
+
+    override fun setTransactionAmount(amount: BigDecimal) {
+        _transactionAmount.value = amount
     }
 }
 
@@ -151,6 +194,27 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
     override val selectedCategory: StateFlow<Category?> = MutableStateFlow<Category?>(null).asStateFlow()
     override fun selectCategory(category: Category) {
         println("MockPreview: selectCategory called with $category")
+    }
+
+    override val selectedDate: StateFlow<Calendar> = MutableStateFlow(Calendar.getInstance()).asStateFlow()
+    override fun selectDate(calendar: Calendar) {
+        println("MockPreview: selectDate called with $calendar")
+    }
+
+    override val selectedTime: StateFlow<LocalTime> = MutableStateFlow(LocalTime.now()).asStateFlow()
+    override fun selectTime(time: LocalTime) {
+        println("MockPreview: selectTime called with $time")
+    }
+
+    override fun createTransaction() {
+        println("MockPreview: createTransaction called")
+    }
+
+    override val transactionAmount: StateFlow<BigDecimal> =
+        MutableStateFlow(BigDecimal.ZERO).asStateFlow()
+
+    override fun setTransactionAmount(amount: BigDecimal) {
+        println("MockPreview: setTransactionAmount called with $amount")
     }
 
     // Add any other functions that your UI might call and need mock behavior for.

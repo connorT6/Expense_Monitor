@@ -25,7 +25,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,9 +35,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,7 +69,12 @@ import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.Category
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -82,18 +88,6 @@ fun HomeScreen(
 ) {
 
     val accountTotal by homeScreenViewModel.accountTotal.collectAsState()
-
-//    HomeScreenContent(
-//        navController, ,
-//        accounts.map {
-//            AutoCompleteObj(it.id, it.name, it)
-//        }, categories.map {
-//            AutoCompleteObj(it.id, it.name, it)
-//        }
-//    ) {
-//
-//    }
-
 
     var showCreateTransaction by remember { mutableStateOf(false) }
 
@@ -188,7 +182,6 @@ fun HomeScreen(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTransactionView(
@@ -196,51 +189,51 @@ fun CreateTransactionView(
     onDismiss: () -> Unit
 ) {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val timeFormatter = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
 
     val accounts by homeScreenViewModel.accounts.collectAsState()
     val categories by homeScreenViewModel.categories.collectAsState()
+    val selectedAccount by homeScreenViewModel.selectedAccount.collectAsState()
+    val selectedCategory by homeScreenViewModel.selectedCategory.collectAsState()
+    val transactionAmount by homeScreenViewModel.transactionAmount.collectAsState()
 
-    val calendar = Calendar.getInstance()
-    val datePickerState = rememberDatePickerState()
-    val timePickerState = rememberTimePickerState(
-        initialHour = calendar.get(Calendar.HOUR),
-        initialMinute = calendar.get(Calendar.MINUTE),
-    )
+    var amount by remember {
+        mutableStateOf(
+            transactionAmount.setScale(2, RoundingMode.HALF_UP).toPlainString()
+        )
+    }
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
-    val selectedDate by homeScreenViewModel.selectedDate.collectAsState()
-//    val selectedDate = datePickerState.selectedDateMillis?.let {
-//        formatter.format(Date(it))
-//    } ?: formatter.format(calendar.time)
+    val selectedDateState by homeScreenViewModel.selectedDate.collectAsState()
 
-    val selectedTime = timePickerState.hour.let {
-        calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
-        calendar.set(Calendar.MINUTE, timePickerState.minute)
-        timeFormatter.format(calendar.time)
+    var selectedDate by remember { mutableStateOf(formatter.format(selectedDateState.time)) }
+
+    LaunchedEffect(selectedDateState) {
+        selectedDate = formatter.format(selectedDateState.time)
+    }
+
+    val selectedTimeState by homeScreenViewModel.selectedTime.collectAsState()
+
+    var selectedTime by remember { mutableStateOf(timeFormatter.format(LocalTime.now())) }
+
+    LaunchedEffect(selectedTimeState) {
+        selectedTime = timeFormatter.format(selectedTimeState)
     }
 
     if (showDatePicker) {
-        DatePick(datePickerState, {
+        DatePickerPopUp(
+            homeScreenViewModel, selectedDateState
+        ) {
             showDatePicker = false
-            val newDate = datePickerState.selectedDateMillis?.let {
-                formatter.format(Date(it))
-            } ?: formatter.format(calendar.time)
-            homeScreenViewModel.selectDate(newDate)
-        }, {})
+            // Date selection handled in DatePick composable
+        }
     }
 
     if (showTimePicker) {
-        TimePickerDialog({
+        TimePickerDialog(homeScreenViewModel, selectedTimeState) {
             showTimePicker = false
-        }, {
-            showTimePicker = false
-        }) {
-            TimePicker(
-                state = timePickerState,
-            )
         }
     }
     Dialog(
@@ -262,7 +255,8 @@ fun CreateTransactionView(
                     },
                     {
                         homeScreenViewModel.selectAccount(it.obj as Account)
-                    }
+                    },
+                    defaultText = selectedAccount?.name
                 )
 
                 Spacer(Modifier.height(12.dp))
@@ -274,7 +268,8 @@ fun CreateTransactionView(
                     },
                     {
                         homeScreenViewModel.selectCategory(it.obj as Category)
-                    }
+                    },
+                    defaultText = selectedCategory?.name
                 )
                 Spacer(Modifier.height(12.dp))
 
@@ -315,22 +310,40 @@ fun CreateTransactionView(
                 Spacer(Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = "0.0", onValueChange = { typedValue ->
-                        if (typedValue.all { it.isDigit() }) {
-//                                onBalanceEdit.invoke(typedValue)
+                    value = amount,
+                    onValueChange = { typedValue ->
+                        // Allow up to 2 decimal places
+                        val regex = Regex("^\\d+\\.?\\d{0,2}$")
+                        if (typedValue.isEmpty() || regex.matches(typedValue)) {
+                            amount = typedValue
+//                            val amount = if (typedValue.isEmpty()) BigDecimal.ZERO else BigDecimal(typedValue)
+                            homeScreenViewModel.setTransactionAmount(
+                                if (typedValue.isEmpty()) BigDecimal.ZERO
+                                else BigDecimal(
+                                    typedValue
+                                )
+                            )
                         }
                     },
                     label = {
                         Text("Amount")
                     },
+                    modifier = Modifier.onFocusChanged {
+                        if (!it.isFocused) {
+                            amount =
+                                transactionAmount.setScale(2, RoundingMode.HALF_UP).toPlainString()
+                        }
+                    },
                     keyboardOptions = KeyboardOptions.Default.copy(
-
                         keyboardType = KeyboardType.Number
                     )
                 )
                 Spacer(Modifier.height(12.dp))
 
-                DialogBottomRow({}, onDismiss, { true })
+                DialogBottomRow({
+                    homeScreenViewModel.createTransaction()
+                    onDismiss.invoke()
+                }, onDismiss, { true })
             }
         }
     }
@@ -341,9 +354,10 @@ private fun DropDownOutlineTextField(
     label: String,
     suggestions: List<AutoCompleteObj>,
     onItemSelect: (AutoCompleteObj) -> Unit,
-    focusRequester: FocusRequester? = null
+    focusRequester: FocusRequester? = null,
+    defaultText: String? = null
 ) {
-    var text by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf(defaultText ?: "") }
     var expanded by remember { mutableStateOf(false) }
     var fieldValue = TextFieldValue(text = text, selection = TextRange(text.length))
 
@@ -410,34 +424,15 @@ private fun DropDownOutlineTextField(
 }
 
 
-@Preview
-@Composable
-private fun DropDownPrev() {
-    ExpenseMonitorTheme {
-        val suggestions = listOf(
-            "apple", "storm", "whisper", "galaxy", "river",
-            "canvas", "marble", "echo", "lantern", "crystal",
-            "ember", "horizon", "cascade", "meadow", "quartz",
-            "serene", "voyage", "zephyr", "harbor", "myth",
-            "forest", "breeze", "shadow", "flame", "aurora",
-            "twilight", "dream", "pulse", "oasis", "spire",
-            "dusk", "glimmer", "velvet", "shard", "ripple",
-            "sage", "drift", "mystic", "clover", "solstice",
-            "radiant", "silken", "celestial", "wander", "opal",
-            "thistle", "ashen", "luminous", "echoes", "serenade"
-        ).map {
-            AutoCompleteObj(it, it)
-        }
-        Column {
-            DropDownOutlineTextField("Account", suggestions, {})
-        }
-        DropDownOutlineTextField("Account", suggestions, {})
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatePick(datePickerState: DatePickerState, onDismiss: () -> Unit, onItemSelect: () -> Unit) {
+fun DatePickerPopUp(
+    homeScreenViewModel: IHomeScreenViewModel,
+    selectedDate: Calendar,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState()
+
     DatePickerDialog(
         onDismissRequest = {
             // Dismiss the dialog when the user clicks outside the dialog or on the back
@@ -448,12 +443,12 @@ fun DatePick(datePickerState: DatePickerState, onDismiss: () -> Unit, onItemSele
         confirmButton = {
             TextButton(
                 onClick = {
+                    if (datePickerState.selectedDateMillis == null) {
+                        return@TextButton
+                    }
+                    selectedDate.timeInMillis = datePickerState.selectedDateMillis!!
+                    homeScreenViewModel.selectDate(selectedDate)
                     onDismiss.invoke()
-//                    snackScope.launch {
-//                        snackState.showSnackbar(
-//                            "Selected date timestamp: ${datePickerState.selectedDateMillis}"
-//                        )
-//                    }
                 }
             ) {
                 Text("OK")
@@ -467,25 +462,44 @@ fun DatePick(datePickerState: DatePickerState, onDismiss: () -> Unit, onItemSele
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimePickerDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-    content: @Composable () -> Unit
+    homeScreenViewModel: IHomeScreenViewModel,
+    selectedTime: LocalTime,
+    onDismiss: () -> Unit
 ) {
+    val timePickerState: TimePickerState = rememberTimePickerState(
+        initialHour = selectedTime.hour,
+        initialMinute = selectedTime.minute,
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
         dismissButton = {
-            TextButton(onClick = { onDismiss() }) {
+            TextButton(onClick = {
+                onDismiss.invoke()
+            }) {
                 Text("Dismiss")
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm() }) {
+            TextButton(onClick = {
+                homeScreenViewModel.selectTime(
+                    LocalTime.of(
+                        timePickerState.hour,
+                        timePickerState.minute
+                    )
+                )
+                onDismiss.invoke()
+            }) {
                 Text("OK")
             }
         },
-        text = { content() }
+        text = {
+            TimePicker(
+                state = timePickerState,
+            )
+        }
     )
 }
 
@@ -547,14 +561,7 @@ private fun DropDownList(
     }
 }
 
-
-@Composable
-@Preview
-private fun TrPreview() {
-    ExpenseMonitorTheme() {
-        CreateTransactionView(MockHomeScreenViewModel()) {}
-    }
-}
+//-------------------------------------------------- Previews -------------------------------------------------------
 
 @Composable
 @Preview
@@ -564,16 +571,45 @@ private fun HomePreview() {
     }
 }
 
+@Composable
+@Preview
+private fun TrPreview() {
+    ExpenseMonitorTheme() {
+        CreateTransactionView(MockHomeScreenViewModel()) {}
+    }
+}
+
+@Preview
+@Composable
+private fun DropDownPrev() {
+    ExpenseMonitorTheme {
+        val suggestions = listOf(
+            "apple", "storm", "whisper", "galaxy", "river",
+            "canvas", "marble", "echo", "lantern", "crystal",
+            "ember", "horizon", "cascade", "meadow", "quartz",
+            "serene", "voyage", "zephyr", "harbor", "myth",
+            "forest", "breeze", "shadow", "flame", "aurora",
+            "twilight", "dream", "pulse", "oasis", "spire",
+            "dusk", "glimmer", "velvet", "shard", "ripple",
+            "sage", "drift", "mystic", "clover", "solstice",
+            "radiant", "silken", "celestial", "wander", "opal",
+            "thistle", "ashen", "luminous", "echoes", "serenade"
+        ).map {
+            AutoCompleteObj(it, it)
+        }
+        Column {
+            DropDownOutlineTextField("Account", suggestions, {})
+        }
+        DropDownOutlineTextField("Account", suggestions, {})
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
 private fun DatePickerPrev() {
     ExpenseMonitorTheme {
-        val datePickerState = rememberDatePickerState()
-        DatePicker(
-            state = datePickerState,
-            showModeToggle = false
-        )
+        DatePickerPopUp(MockHomeScreenViewModel(), Calendar.getInstance()) {}
     }
 }
 
@@ -583,10 +619,6 @@ private fun DatePickerPrev() {
 fun TimePickPrev() {
     val timePickerState = rememberTimePickerState()
     ExpenseMonitorTheme {
-        TimePickerDialog({}, {}) {
-            TimePicker(
-                state = timePickerState,
-            )
-        }
+        TimePickerDialog(MockHomeScreenViewModel(), LocalTime.now()) {}
     }
 }
