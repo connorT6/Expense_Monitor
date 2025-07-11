@@ -16,6 +16,7 @@ import kotlinx.coroutines.tasks.await
 
 data class Transaction(
     val accountId: String,
+    val categoryId : String,
     val amount: Double,
     val transactionType: TransactionType,
     val isSwap: Boolean = false,
@@ -28,6 +29,9 @@ data class Transaction(
     var account: Account? = null,
     var docId: String = ""
 ) {
+
+    constructor() : this("", "", 0.0, TransactionType.DEBIT)
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -98,6 +102,11 @@ class TransactionRepo private constructor() {
         return query.get(Source.CACHE).await().toObjects(Transaction::class.java).toSet()
     }
 
+
+    fun saveTransactionTransactional(transaction: Transaction, tr: com.google.firebase.firestore.Transaction){
+        val docRef = collection.document()
+        tr.set(docRef, transaction.copy(docId = docRef.id))
+    }
 
     suspend fun createTransaction(transaction: Transaction) {
         if (transaction.smsId != null){

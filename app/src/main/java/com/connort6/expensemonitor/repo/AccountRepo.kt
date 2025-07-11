@@ -213,7 +213,7 @@ class AccountRepo private constructor(
         Log.d("REPO", "deleteAccount: ")
     }
 
-    suspend fun updateAccountBalance(addValue: Double, docId: String, transaction: Transaction? = null) {
+    fun updateAccountBalance(addValue: Double, docId: String, transaction: Transaction? = null) {
         if (transaction != null) {
             updateAccountBalance(docId, transaction, addValue)
             return
@@ -221,7 +221,7 @@ class AccountRepo private constructor(
         val db = FirebaseFirestore.getInstance()
         db.runTransaction { tr ->
             updateAccountBalance(docId, tr, addValue)
-        }.await()
+        }
 
     }
 

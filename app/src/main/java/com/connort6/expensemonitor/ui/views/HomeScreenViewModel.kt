@@ -8,6 +8,7 @@ import com.connort6.expensemonitor.repo.Category
 import com.connort6.expensemonitor.repo.CategoryRepo
 import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionRepo
+import com.connort6.expensemonitor.repo.TransactionType
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -110,11 +111,30 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     }
 
     override fun createTransaction() {
-        _selectedAccount.value = null
-        _selectedCategory.value = null
-        _selectedDate.value = Calendar.getInstance()
-        _selectedTime.value = LocalTime.now()
-        _transactionAmount.value = BigDecimal.ZERO
+        viewModelScope.launch {
+            if (_selectedAccount.value == null || _selectedCategory.value == null) {
+                return@launch
+            }
+            val transaction = Transaction(
+                _selectedAccount.value!!.id,
+                _selectedCategory.value!!.id,
+                _transactionAmount.value.toDouble(),
+                TransactionType.DEBIT
+            )
+            db.runTransaction { tr ->
+                accountRepo.updateAccountBalance(
+                    _transactionAmount.value.toDouble(),
+                    _selectedAccount.value!!.id,
+                    tr
+                )
+                transactionRepo.saveTransactionTransactional(transaction, tr)
+            }
+            _selectedAccount.value = null
+            _selectedCategory.value = null
+            _selectedDate.value = Calendar.getInstance()
+            _selectedTime.value = LocalTime.now()
+            _transactionAmount.value = BigDecimal.ZERO
+        }
     }
 
     override fun selectAccount(account: Account) {
@@ -139,13 +159,16 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 }
 
 
-
 class MockHomeScreenViewModel : IHomeScreenViewModel {
 
     // Override properties from HomeScreenViewModel
     override val accountTotal: StateFlow<Account> =
         MutableStateFlow(
-            Account(id = "total", name = "Total Balance", balance = 1500.75) // Use your Account data class
+            Account(
+                id = "total",
+                name = "Total Balance",
+                balance = 1500.75
+            ) // Use your Account data class
         )
             .asStateFlow()
 
@@ -156,7 +179,7 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
             Account(id = "3", name = "Investment", balance = 12050.20)
         )
     )
-    .asStateFlow()
+        .asStateFlow()
     override val categories: StateFlow<List<Category>> = MutableStateFlow<List<Category>>(
         listOf(
             Category(id = "cat1", name = "Groceries"),
@@ -167,7 +190,7 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
             Category(id = "cat6", name = "Transportation")
         )
     )
-    .asStateFlow()
+        .asStateFlow()
     // The init block of the parent HomeScreenViewModel will run unless you
     // prevent it or ensure its dependencies are mocked if it tries to access them.
     // Since we're overriding the flows directly with mock data,
@@ -186,22 +209,30 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
         // )
     }
 
-    override val selectedAccount: StateFlow<Account?> = MutableStateFlow<Account?>(null).asStateFlow()
+    override val selectedAccount: StateFlow<Account?> =
+        MutableStateFlow<Account?>(null).asStateFlow()
+
     override fun selectAccount(account: Account) {
         println("MockPreview: selectAccount called with $account")
     }
 
-    override val selectedCategory: StateFlow<Category?> = MutableStateFlow<Category?>(null).asStateFlow()
+    override val selectedCategory: StateFlow<Category?> =
+        MutableStateFlow<Category?>(null).asStateFlow()
+
     override fun selectCategory(category: Category) {
         println("MockPreview: selectCategory called with $category")
     }
 
-    override val selectedDate: StateFlow<Calendar> = MutableStateFlow(Calendar.getInstance()).asStateFlow()
+    override val selectedDate: StateFlow<Calendar> =
+        MutableStateFlow(Calendar.getInstance()).asStateFlow()
+
     override fun selectDate(calendar: Calendar) {
         println("MockPreview: selectDate called with $calendar")
     }
 
-    override val selectedTime: StateFlow<LocalTime> = MutableStateFlow(LocalTime.now()).asStateFlow()
+    override val selectedTime: StateFlow<LocalTime> =
+        MutableStateFlow(LocalTime.now()).asStateFlow()
+
     override fun selectTime(time: LocalTime) {
         println("MockPreview: selectTime called with $time")
     }
