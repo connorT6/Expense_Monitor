@@ -1,5 +1,6 @@
 package com.connort6.expensemonitor.repo
 
+import android.util.Log
 import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.CollectionReference
@@ -104,11 +105,13 @@ class TransactionRepo private constructor() {
 
 
     fun saveTransactionTransactional(transaction: Transaction, tr: com.google.firebase.firestore.Transaction){
+        Log.e("ASD","Saving transaction start")
         val docRef = collection.document()
         tr.set(docRef, transaction.copy(docId = docRef.id))
     }
 
     suspend fun createTransaction(transaction: Transaction) {
+
         if (transaction.smsId != null){
             val existing = collection.whereEqualTo(Transaction::smsId.name, transaction.smsId).get().await().toObjects(Transaction::class.java)
             if (existing.isNotEmpty()) {

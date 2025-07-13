@@ -70,7 +70,8 @@ class AccountRepo private constructor(
     }
 
     suspend fun createAccount(account: Account): String {
-        val existing = collection.whereEqualTo(Account::name.name, account.name).get(Source.CACHE).await()
+        val existing =
+            collection.whereEqualTo(Account::name.name, account.name).get(Source.CACHE).await()
         if (!existing.isEmpty) {
             return existing.toObjects(Account::class.java).first().id
         }
@@ -104,12 +105,14 @@ class AccountRepo private constructor(
     private fun getAllAccounts() {
         Log.d("REPO", "getAllAccounts: ")
         val snapshot =
-            collection.whereEqualTo(Account::deleted.name, false).orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(Source.CACHE)
+            collection.whereEqualTo(Account::deleted.name, false)
+                .orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(Source.CACHE)
 
 
         snapshot.let { it ->
             it.addOnSuccessListener { querySnapshot ->
-                val accountsOrderedUpTime = querySnapshot.toObjects(Account::class.java) // accounts orders by last updated time
+                val accountsOrderedUpTime =
+                    querySnapshot.toObjects(Account::class.java) // accounts orders by last updated time
                 if (accountsOrderedUpTime.isNotEmpty()) {
                     listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
                     val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
@@ -134,10 +137,12 @@ class AccountRepo private constructor(
 
     private fun checkDataAvailable() {
         val snapshot =
-            collection.whereEqualTo(Account::deleted.name, false).orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(Source.SERVER)
+            collection.whereEqualTo(Account::deleted.name, false)
+                .orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(Source.SERVER)
         snapshot.let { it ->
             it.addOnSuccessListener { querySnapshot ->
-                val accountsOrderedUpTime = querySnapshot.toObjects(Account::class.java) // accounts orders by last updated time
+                val accountsOrderedUpTime =
+                    querySnapshot.toObjects(Account::class.java) // accounts orders by last updated time
                 if (accountsOrderedUpTime.isNotEmpty()) {
                     listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
                     val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
@@ -150,24 +155,25 @@ class AccountRepo private constructor(
     }
 
     private fun listenToChanges(lastUpdated: Timestamp) {
-        collection.whereGreaterThan(Account::lastUpdated.name, lastUpdated).orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING)
+        collection.whereGreaterThan(Account::lastUpdated.name, lastUpdated)
+            .orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING)
             .addSnapshotListener { value, error ->
                 if (error != null) {
                     Log.d("REPO", "listenToChanges: ${error.message}")
                     return@addSnapshotListener
                 }
                 value?.let { updated ->
-                    val elements = updated.toObjects(Account::class.java).filter { it.id.isNotEmpty() }.toSet()
+                    val elements =
+                        updated.toObjects(Account::class.java).filter { it.id.isNotEmpty() }.toSet()
                     if (elements.isEmpty()) {
                         return@addSnapshotListener
                     }
-                    _accounts.update { accountList ->
-                        accountList.toMutableSet().apply {
-                            removeAll(elements)
-                            addAll(elements.filter { !it.deleted })
-                            sortedByDescending { it.order }
-                        }
+                    val updatedAccounts = _accounts.value.toMutableSet().apply {
+                        removeAll(elements)
+                        addAll(elements.filter { !it.deleted })
+                        sortedByDescending { it.order }
                     }
+                    _accounts.value = updatedAccounts
                     listenToChanges(elements.first().lastUpdated ?: Timestamp.now())
                 }
             }
@@ -213,7 +219,13 @@ class AccountRepo private constructor(
         Log.d("REPO", "deleteAccount: ")
     }
 
-    fun updateAccountBalance(addValue: Double, docId: String, transaction: Transaction? = null) :Account? {
+    fun updateAccountBalance(
+        addValue: Double,
+        docId: String,
+        transaction: Transaction? = null
+    ): Account? {
+        Log.e("ASD","inside save")
+
         if (transaction != null) {
             return updateAccountBalance(docId, transaction, addValue)
         }

@@ -1,5 +1,6 @@
 package com.connort6.expensemonitor.ui.views
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.Account
@@ -126,17 +127,19 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                 _transactionAmount.value.toDouble(),
                 _transactionType.value
             )
+            var amount = _transactionAmount.value
+            if (_transactionType.value == TransactionType.DEBIT) {
+                amount = amount.negate()
+            }
             db.runTransaction { tr ->
-
-                var amount = _transactionAmount.value
-                if (_transactionType.value == TransactionType.DEBIT) {
-                    amount = amount.negate()
-                }
+                Log.e("ASD","Saving acc start")
                 val updateAccountBalance = accountRepo.updateAccountBalance(
                     amount.toDouble(),
-                    _selectedAccount.value!!.id,
+                    transaction.accountId,
                     tr
                 )
+                Log.e("ASD","Saving acc start ${updateAccountBalance?.balance}")
+
                 transactionRepo.saveTransactionTransactional(transaction, tr)
             }
             _selectedAccount.value = null
