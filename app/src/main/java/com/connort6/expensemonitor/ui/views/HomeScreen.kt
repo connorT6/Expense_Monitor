@@ -68,6 +68,7 @@ import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.Category
+import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -133,6 +134,7 @@ fun HomeScreen(
                     .fillMaxHeight()
                     .clickable {
                         showCreateTransaction = true
+                        homeScreenViewModel.selectTransactionType(TransactionType.CREDIT)
                     }) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_plus_2),
@@ -147,6 +149,7 @@ fun HomeScreen(
                     .fillMaxHeight()
                     .clickable {
                         showCreateTransaction = true
+                        homeScreenViewModel.selectTransactionType(TransactionType.DEBIT)
                     }) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_minus_2),
@@ -162,6 +165,7 @@ fun HomeScreen(
                     .fillMaxHeight()
                     .clickable {
                         showCreateTransaction = true
+                        homeScreenViewModel.selectTransactionType(TransactionType.CREDIT)
                     }) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_transfer),

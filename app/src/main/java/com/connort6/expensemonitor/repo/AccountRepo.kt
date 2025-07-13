@@ -213,15 +213,16 @@ class AccountRepo private constructor(
         Log.d("REPO", "deleteAccount: ")
     }
 
-    fun updateAccountBalance(addValue: Double, docId: String, transaction: Transaction? = null) {
+    fun updateAccountBalance(addValue: Double, docId: String, transaction: Transaction? = null) :Account? {
         if (transaction != null) {
-            updateAccountBalance(docId, transaction, addValue)
-            return
+            return updateAccountBalance(docId, transaction, addValue)
         }
         val db = FirebaseFirestore.getInstance()
         db.runTransaction { tr ->
-            updateAccountBalance(docId, tr, addValue)
+            return@runTransaction updateAccountBalance(docId, tr, addValue)
         }
+
+        return null
 
     }
 
@@ -229,12 +230,12 @@ class AccountRepo private constructor(
         docId: String,
         transaction: Transaction,
         addValue: Double
-    ) {
+    ): Account? {
         val docRef = collection.document(docId)
         val account = transaction.get(docRef).toObject(Account::class.java)
         val mainAcc = transaction.get(accountRef).toObject(Account::class.java)
         if (account == null || mainAcc == null) {
-            return
+            return null
         }
         val mainBal = mainAcc.balance + addValue
         transaction.set(
@@ -244,6 +245,7 @@ class AccountRepo private constructor(
         transaction.set(
             accountRef, AccBalUpdate(mainBal), SetOptions.merge()
         )
+        return account
     }
 
     companion object {

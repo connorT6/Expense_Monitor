@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.LocalTime
 import java.math.BigDecimal
-import java.util.Date
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -27,12 +26,14 @@ interface IHomeScreenViewModel {
     val selectedCategory: StateFlow<Category?>
     val selectedDate: StateFlow<Calendar>
     val selectedTime: StateFlow<LocalTime>
+    val selectedTransactionType: StateFlow<TransactionType>
     val transactionAmount: StateFlow<BigDecimal>
     fun createTransaction()
     fun saveTransaction(transaction: Transaction)
     fun selectAccount(account: Account)
     fun selectCategory(category: Category)
     fun selectDate(calendar: Calendar)
+    fun selectTransactionType(transactionType: TransactionType)
     fun selectTime(time: LocalTime)
     fun setTransactionAmount(amount: BigDecimal)
 }
@@ -59,6 +60,9 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     override val selectedTime: StateFlow<LocalTime>
         get() = _selectedTime.asStateFlow()
 
+    override val selectedTransactionType: StateFlow<TransactionType>
+        get() = _transactionType.asStateFlow()
+
     override val transactionAmount: StateFlow<BigDecimal>
         get() = _transactionAmount.asStateFlow()
 
@@ -75,6 +79,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val _selectedCategory = MutableStateFlow<Category?>(null)
     private val _selectedDate = MutableStateFlow(Calendar.getInstance())
     private val _selectedTime = MutableStateFlow(LocalTime.now())
+    private val _transactionType = MutableStateFlow(TransactionType.DEBIT)
     private val _transactionAmount = MutableStateFlow(BigDecimal.ZERO)
 
     init {
@@ -119,11 +124,16 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                 _selectedAccount.value!!.id,
                 _selectedCategory.value!!.id,
                 _transactionAmount.value.toDouble(),
-                TransactionType.DEBIT
+                _transactionType.value
             )
             db.runTransaction { tr ->
-                accountRepo.updateAccountBalance(
-                    _transactionAmount.value.toDouble(),
+
+                var amount = _transactionAmount.value
+                if (_transactionType.value == TransactionType.DEBIT) {
+                    amount = amount.negate()
+                }
+                val updateAccountBalance = accountRepo.updateAccountBalance(
+                    amount.toDouble(),
                     _selectedAccount.value!!.id,
                     tr
                 )
@@ -151,6 +161,10 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 
     override fun selectTime(time: LocalTime) {
         _selectedTime.value = time
+    }
+
+    override fun selectTransactionType(transactionType: TransactionType) {
+        _transactionType.value = transactionType
     }
 
     override fun setTransactionAmount(amount: BigDecimal) {
@@ -235,6 +249,13 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
 
     override fun selectTime(time: LocalTime) {
         println("MockPreview: selectTime called with $time")
+    }
+
+    override val selectedTransactionType: StateFlow<TransactionType> =
+        MutableStateFlow(TransactionType.DEBIT).asStateFlow()
+
+    override fun selectTransactionType(transactionType: TransactionType) {
+        println("MockPreview: selectTransactionType called with $transactionType")
     }
 
     override fun createTransaction() {
