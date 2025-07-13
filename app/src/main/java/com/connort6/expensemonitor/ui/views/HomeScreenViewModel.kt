@@ -132,13 +132,11 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                 amount = amount.negate()
             }
             db.runTransaction { tr ->
-                Log.e("ASD","Saving acc start")
                 val updateAccountBalance = accountRepo.updateAccountBalance(
                     amount.toDouble(),
                     transaction.accountId,
                     tr
                 )
-                Log.e("ASD","Saving acc start ${updateAccountBalance?.balance}")
 
                 transactionRepo.saveTransactionTransactional(transaction, tr)
             }

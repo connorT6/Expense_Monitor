@@ -224,8 +224,6 @@ class AccountRepo private constructor(
         docId: String,
         transaction: Transaction? = null
     ): Account? {
-        Log.e("ASD","inside save")
-
         if (transaction != null) {
             return updateAccountBalance(docId, transaction, addValue)
         }

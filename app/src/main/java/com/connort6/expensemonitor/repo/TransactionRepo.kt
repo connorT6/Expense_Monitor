@@ -105,7 +105,6 @@ class TransactionRepo private constructor() {
 
 
     fun saveTransactionTransactional(transaction: Transaction, tr: com.google.firebase.firestore.Transaction){
-        Log.e("ASD","Saving transaction start")
         val docRef = collection.document()
         tr.set(docRef, transaction.copy(docId = docRef.id))
     }
