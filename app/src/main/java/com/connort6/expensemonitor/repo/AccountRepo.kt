@@ -23,24 +23,7 @@ data class Account(
     @ServerTimestamp val lastUpdated: Timestamp? = null,
     val order: Int = 0,
     val iconName: String = ""
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Account
-
-        if (id.isEmpty()) {
-            return lastUpdated == other.lastUpdated
-        }
-
-        return id == other.id
-    }
-
-    override fun hashCode(): Int {
-        return id.hashCode()
-    }
-}
+)
 
 data class AccBalUpdate(
     var balance: Double = 0.0,
@@ -54,7 +37,7 @@ class AccountRepo private constructor(
     private val accountRef = mainCollection.document("accounts")
     private val collection = accountRef.collection("Accounts")
 
-    private val _accounts = MutableStateFlow<Set<Account>>(mutableSetOf())
+    private val _accounts = MutableStateFlow<List<Account>>(listOf())
     private val _mainAcc = MutableStateFlow(Account())
 
     val accountFlow = _accounts.asStateFlow()
@@ -116,7 +99,7 @@ class AccountRepo private constructor(
                 if (accountsOrderedUpTime.isNotEmpty()) {
                     listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
                     val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
-                    _accounts.value = sortedByDescending.toSet()
+                    _accounts.value = sortedByDescending
                 } else {
                     checkDataAvailable()
                 }
@@ -146,7 +129,7 @@ class AccountRepo private constructor(
                 if (accountsOrderedUpTime.isNotEmpty()) {
                     listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
                     val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
-                    _accounts.value = sortedByDescending.toSet()
+                    _accounts.value = sortedByDescending
                 } else {
                     listenToChanges(Timestamp.now())
                 }
@@ -168,12 +151,13 @@ class AccountRepo private constructor(
                     if (elements.isEmpty()) {
                         return@addSnapshotListener
                     }
-                    val updatedAccounts = _accounts.value.toMutableSet().apply {
-                        removeAll(elements)
-                        addAll(elements.filter { !it.deleted })
-                        sortedByDescending { it.order }
+                    val updatedIds = elements.map { it.id }
+                    _accounts.update { list ->
+                        list.filterNot { updatedIds.contains(it.id) }
+                            .plus(elements.filter { !it.deleted })
+                            .sortedByDescending { it.order }
                     }
-                    _accounts.value = updatedAccounts
+
                     listenToChanges(elements.first().lastUpdated ?: Timestamp.now())
                 }
             }
@@ -241,21 +225,26 @@ class AccountRepo private constructor(
         transaction: Transaction,
         addValue: Double
     ): Account? {
-        val docRef = collection.document(docId)
-        val account = transaction.get(docRef).toObject(Account::class.java)
-        val mainAcc = transaction.get(accountRef).toObject(Account::class.java)
-        if (account == null || mainAcc == null) {
-            return null
+        try {
+            val docRef = collection.document(docId)
+            val account = transaction.get(docRef).toObject(Account::class.java)
+            val mainAcc = transaction.get(accountRef).toObject(Account::class.java)
+            if (account == null || mainAcc == null) {
+                return null
+            }
+            val mainBal = mainAcc.balance + addValue
+            transaction.set(
+                docRef,
+                account.copy(balance = account.balance + addValue, lastUpdated = null)
+            )
+            transaction.set(
+                accountRef, AccBalUpdate(mainBal), SetOptions.merge()
+            )
+            return account
+        } catch (e: Exception) {
+            Log.e("Acc", "updateAccountBalance: ${e.message}", e)
         }
-        val mainBal = mainAcc.balance + addValue
-        transaction.set(
-            docRef,
-            account.copy(balance = account.balance + addValue, lastUpdated = null)
-        )
-        transaction.set(
-            accountRef, AccBalUpdate(mainBal), SetOptions.merge()
-        )
-        return account
+        return null
     }
 
     companion object {
