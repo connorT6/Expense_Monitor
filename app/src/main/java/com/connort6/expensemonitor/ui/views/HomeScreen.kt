@@ -123,6 +123,12 @@ fun HomeScreen(
             }) {
                 Text("Categories")
             }
+            Spacer(Modifier.height(8.dp))
+            Button({
+                navController.navigate("transactionScreen")
+            }) {
+                Text("Transactions")
+            }
         }
         Row(
             modifier = Modifier
