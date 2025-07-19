@@ -12,6 +12,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.connort6.expensemonitor.config.collectionName
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import com.connort6.expensemonitor.ui.views.AccountScreen
 import com.connort6.expensemonitor.ui.views.CategoryScreen
@@ -26,7 +27,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 //
 //data class Reg(val regex: Regex)
 
-val mainCollection = FirebaseFirestore.getInstance().collection("test")
+val mainCollection = FirebaseFirestore.getInstance().collection(collectionName)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

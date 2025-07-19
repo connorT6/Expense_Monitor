@@ -32,6 +32,21 @@ android {
             signingConfig = signingConfigs.getByName("debug") // Replace with your release signing config
         }
     }
+
+    // Specifies one flavor dimension.
+    flavorDimensions += "version"
+    productFlavors {
+        create("beta") {
+            dimension = "version"
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+        }
+        create("full") {
+            dimension = "version"
+        }
+    }
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
