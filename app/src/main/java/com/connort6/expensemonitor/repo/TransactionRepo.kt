@@ -89,7 +89,7 @@ class TransactionRepo private constructor() {
             .addOnSuccessListener { snapshot ->
                 val sortByUpTime = snapshot.toObjects(Transaction::class.java)
                 if (sortByUpTime.isEmpty()) {
-                    listenToChanges(Timestamp.now())
+                    checkDataAvailable()
                     return@addOnSuccessListener
                 }
                 listenToChanges(sortByUpTime.first().lastUpdated ?: Timestamp.now())
@@ -97,6 +97,25 @@ class TransactionRepo private constructor() {
                     sortByUpTime.sortedByDescending { it.createdTime }
                 }
             }
+    }
+
+    private fun checkDataAvailable() {
+        val snapshot =
+            collection.whereEqualTo(Transaction::deleted.name, false)
+                .orderBy(Transaction::lastUpdated.name, Query.Direction.DESCENDING).get(Source.SERVER)
+        snapshot.let { it ->
+            it.addOnSuccessListener { querySnapshot ->
+                val accountsOrderedUpTime =
+                    querySnapshot.toObjects(Transaction::class.java) // accounts orders by last updated time
+                if (accountsOrderedUpTime.isNotEmpty()) {
+                    listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
+                    val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.createdTime }
+                    _transactions.value = sortedByDescending
+                } else {
+                    listenToChanges(Timestamp.now())
+                }
+            }
+        }
     }
 
     suspend fun getByQuery(queryBuilder: (CollectionReference) -> Query): Set<Transaction> {
