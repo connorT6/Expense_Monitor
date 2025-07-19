@@ -15,9 +15,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.tasks.await
 
+
 data class Transaction(
     val accountId: String,
-    val categoryId : String,
+    val categoryId: String,
     val amount: Double,
     val transactionType: TransactionType,
     val isSwap: Boolean = false,
@@ -62,7 +63,7 @@ class TransactionRepo private constructor() {
     private val transactionDocRef = mainCollection.document("transaction")
     private val collection = transactionDocRef.collection("transactions")
 
-    private val _transactions = MutableStateFlow<Set<Transaction>>(mutableSetOf())
+    private val _transactions = MutableStateFlow<List<Transaction>>(mutableListOf())
     val transactions = _transactions.asStateFlow()
 
     companion object {
@@ -93,7 +94,7 @@ class TransactionRepo private constructor() {
                 }
                 listenToChanges(sortByUpTime.first().lastUpdated ?: Timestamp.now())
                 _transactions.update {
-                    sortByUpTime.sortedByDescending { it.createdTime }.toSet()
+                    sortByUpTime.sortedByDescending { it.createdTime }
                 }
             }
     }
@@ -104,15 +105,20 @@ class TransactionRepo private constructor() {
     }
 
 
-    fun saveTransactionTransactional(transaction: Transaction, tr: com.google.firebase.firestore.Transaction){
+    fun saveTransactionTransactional(
+        transaction: Transaction,
+        tr: com.google.firebase.firestore.Transaction
+    ) {
         val docRef = collection.document()
         tr.set(docRef, transaction.copy(docId = docRef.id))
     }
 
     suspend fun createTransaction(transaction: Transaction) {
 
-        if (transaction.smsId != null){
-            val existing = collection.whereEqualTo(Transaction::smsId.name, transaction.smsId).get().await().toObjects(Transaction::class.java)
+        if (transaction.smsId != null) {
+            val existing =
+                collection.whereEqualTo(Transaction::smsId.name, transaction.smsId).get().await()
+                    .toObjects(Transaction::class.java)
             if (existing.isNotEmpty()) {
                 return
             }
@@ -136,16 +142,18 @@ class TransactionRepo private constructor() {
                 if (value == null) {
                     return@addSnapshotListener
                 }
-                val sortByUpTime = value.toObjects(Transaction::class.java).toSet()
-                if (sortByUpTime.isNotEmpty()) {
-                    _transactions.update { transactions ->
-                        transactions.toMutableSet().apply {
-                            removeAll(sortByUpTime)
-                            addAll(sortByUpTime.filter { !it.deleted })
-                            sortedByDescending { it.createdTime }
-                        }
-                    }
+                val sortByUpTime = value.toObjects(Transaction::class.java)
+                if (sortByUpTime.isEmpty()) {
+                    return@addSnapshotListener
                 }
+                val updatedIds = sortByUpTime.map { it.docId }
+
+                _transactions.update { transactions ->
+                    transactions.filter { it.docId !in updatedIds }
+                        .plus(sortByUpTime)
+                        .sortedByDescending { it.createdTime }
+                }
+
             }
     }
 
