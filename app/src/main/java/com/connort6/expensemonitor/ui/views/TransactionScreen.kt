@@ -71,8 +71,8 @@ fun TransactionItem(transaction: Transaction) {
                 modifier = Modifier.align(Alignment.CenterVertically)
             )
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text(transaction.accountId)
-                Text(transaction.categoryId)
+                Text(transaction.account?.name ?: transaction.accountId)
+                Text(transaction.category?.name ?: transaction.categoryId)
             }
         }
         val text =
@@ -132,12 +132,14 @@ fun ListPreview() {
 @Composable
 fun TrItemPreview() {
 
-    TransactionItem(Transaction(
-        accountId = "account_1",
-        categoryId = "category_salary",
-        amount = 2000.0,
-        transactionType = TransactionType.CREDIT,
-        createdTime = Timestamp.now()
-    ))
+    TransactionItem(
+        Transaction(
+            accountId = "account_1",
+            categoryId = "category_salary",
+            amount = 2000.0,
+            transactionType = TransactionType.CREDIT,
+            createdTime = Timestamp.now()
+        )
+    )
 
 }
