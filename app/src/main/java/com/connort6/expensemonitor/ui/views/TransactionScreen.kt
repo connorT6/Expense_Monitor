@@ -37,31 +37,22 @@ fun TransactionScreen(transactionsViewModel: TransactionsViewModel = viewModel()
 }
 
 @Composable
-fun TransactionList(transactions: List<Transaction>) {
-    var lastCalendar: Calendar? = null
+fun TransactionList(transactions: List<Any>) {
     LazyColumn {
         items(transactions.size) { index ->
-            val transaction = transactions[index]
-            val calendar = Calendar.getInstance()
-            calendar.time = transaction.createdTime.toDate()
-            if (lastCalendar == null || lastCalendar?.get(Calendar.DAY_OF_MONTH) != calendar.get(
-                    Calendar.DAY_OF_MONTH
-                )
-            ) {
-                lastCalendar = calendar
-                DateItem(calendar)
+            val item = transactions[index]
+            when (item) {
+                is TransactionDayDetails -> DateItem(item.day)
+                is Transaction -> TransactionItem(item)
             }
-            transaction.createdTime.toInstant()
-            TransactionItem(transaction)
         }
     }
 }
 
 @Composable
-fun DateItem(calendar: Calendar) {
+fun DateItem(day: String) {
     Row {
-        val dateFormat = SimpleDateFormat("dd-MMM-yyyy", Locale.getDefault())
-        Text(dateFormat.format(calendar.time))
+        Text(day)
     }
 }
 
@@ -128,7 +119,8 @@ fun ListPreview() {
                 createdTime = Timestamp(
                     Date(
                         System.currentTimeMillis() - 24 * 2 * 60 * 60 * 1000
-                    ))
+                    )
+                )
             )
         )
 
@@ -140,6 +132,12 @@ fun ListPreview() {
 @Composable
 fun TrItemPreview() {
 
-    TransactionItem(Transaction())
+    TransactionItem(Transaction(
+        accountId = "account_1",
+        categoryId = "category_salary",
+        amount = 2000.0,
+        transactionType = TransactionType.CREDIT,
+        createdTime = Timestamp.now()
+    ))
 
 }

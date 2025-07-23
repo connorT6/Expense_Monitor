@@ -152,4 +152,9 @@ class CategoryRepo private constructor() {
                 }
             }
     }
+
+    suspend fun getById(id:String):Category? {
+        val snapshot = collection.document(id).get(Source.CACHE).await()
+        return snapshot.toObject(Category::class.java)
+    }
 }

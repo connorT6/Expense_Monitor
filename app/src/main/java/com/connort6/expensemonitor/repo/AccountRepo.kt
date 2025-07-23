@@ -247,6 +247,11 @@ class AccountRepo private constructor(
         return null
     }
 
+    suspend fun getById(id: String): Account? {
+        val snapshot = collection.document(id).get(Source.CACHE).await()
+        return snapshot.toObject(Account::class.java)
+    }
+
     companion object {
         @Volatile
         private var instance: AccountRepo? = null

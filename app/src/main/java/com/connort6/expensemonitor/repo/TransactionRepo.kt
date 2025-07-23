@@ -29,6 +29,8 @@ data class Transaction(
     val deleted: Boolean = false,
     @get:Exclude
     var account: Account? = null,
+    @get:Exclude
+    var category: Category? = null,
     var docId: String = ""
 ) {
 
