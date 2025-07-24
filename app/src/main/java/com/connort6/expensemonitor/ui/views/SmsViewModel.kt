@@ -9,6 +9,7 @@ import android.net.Uri
 import android.provider.Telephony
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.connort6.expensemonitor.repo.AccountRepo
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.SmsRepo
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,11 @@ import kotlinx.coroutines.withContext
 // val date: Long,
 // val type: Int
 // )
+
+enum class SMSLoadMethod {
+    ALL,
+    BOUNDED_ONLY
+}
 
 class SmsViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -45,16 +51,22 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val smsRepo = SmsRepo.getInstance()
 
+    private val accountRepo = AccountRepo.getInstance()
+
     init {
-//        loadSmsSenders()
+        loadSmsSenders()
     }
 
-    fun loadSmsMessages(allowedAddresses: List<String>) {
+    fun loadSmsMessages(smsLoadMethod: SMSLoadMethod) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
-                val messages = readSmsFromProvider(allowedAddresses)
+                var addresses: List<String> = listOf()
+                if (smsLoadMethod == SMSLoadMethod.BOUNDED_ONLY) {
+                    addresses = accountRepo.allSmsSendersFlow.value.map { it.address }
+                }
+                val messages = readSmsFromProvider(addresses)
                 _smsMessages.value = messages
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -174,7 +186,8 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
             val projection = arrayOf(Telephony.Sms.ADDRESS)
             val selection = "${Telephony.Sms.TYPE} = ?"
             val selectionArgs = arrayOf(Telephony.Sms.MESSAGE_TYPE_INBOX.toString())
-            val sortOrder = "${Telephony.Sms.ADDRESS} ASC" // Sort for potentially easier processing later
+            val sortOrder =
+                "${Telephony.Sms.ADDRESS} ASC" // Sort for potentially easier processing later
 
             var cursor: Cursor? = null
             try {
@@ -200,13 +213,17 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun getContactName(phoneNumber: String): String? {
-        val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber))
+        val uri = Uri.withAppendedPath(
+            ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+            Uri.encode(phoneNumber)
+        )
         val projection = arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME)
         var contactName: String? = null
         val cursor = contentResolver.query(uri, projection, null, null, null)
         cursor?.use {
             if (it.moveToFirst()) {
-                contactName = it.getString(it.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME))
+                contactName =
+                    it.getString(it.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME))
             }
         }
         return contactName

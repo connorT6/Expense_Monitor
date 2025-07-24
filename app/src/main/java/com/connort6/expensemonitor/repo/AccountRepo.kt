@@ -10,9 +10,12 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.Transaction
 import jakarta.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 data class Account(
@@ -45,6 +48,9 @@ class AccountRepo private constructor(
     private val _accounts = MutableStateFlow<List<Account>>(listOf())
     private val _mainAcc = MutableStateFlow(Account())
 
+    private val _allSmsSenders = MutableStateFlow<List<SMSOperators>>(listOf())
+    val allSmsSendersFlow = _allSmsSenders.asStateFlow()
+
     val accountFlow = _accounts.asStateFlow()
     val mainAccount = _mainAcc.asStateFlow()
 
@@ -55,6 +61,11 @@ class AccountRepo private constructor(
             }
         }
         getAllAccounts()
+        CoroutineScope(Dispatchers.Default).launch {
+            accountFlow.collect {
+                _allSmsSenders.value = it.flatMap { acc -> acc.smsSenders }.distinct().sortedBy { it.address }
+            }
+        }
     }
 
     suspend fun createAccount(account: Account): String {
