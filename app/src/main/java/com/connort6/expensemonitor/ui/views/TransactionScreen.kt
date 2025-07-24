@@ -82,7 +82,7 @@ fun TransactionItem(transaction: Transaction) {
     }
 
 }
-
+//TODO sms
 
 @Preview
 @Composable

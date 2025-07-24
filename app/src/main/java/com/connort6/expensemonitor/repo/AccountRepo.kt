@@ -22,8 +22,13 @@ data class Account(
     var deleted: Boolean = false,
     @ServerTimestamp val lastUpdated: Timestamp? = null,
     val order: Int = 0,
-    val iconName: String = ""
+    val iconName: String = "",
+    val smsSenders: List<SMSOperators> = listOf(),
 )
+
+data class SMSOperators(val address: String, val parsers: List<SMSParser>)
+
+data class SMSParser(val pattern: String, val transactionType: TransactionType)
 
 data class AccBalUpdate(
     var balance: Double = 0.0,

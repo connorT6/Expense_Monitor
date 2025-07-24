@@ -129,6 +129,12 @@ fun HomeScreen(
             }) {
                 Text("Transactions")
             }
+            Spacer(Modifier.height(8.dp))
+            Button({
+                navController.navigate("smsReader")
+            }) {
+                Text("SMS")
+            }
         }
         Row(
             modifier = Modifier

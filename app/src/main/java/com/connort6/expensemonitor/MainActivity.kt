@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
                                 iconPickerViewModel = iconPickerViewModel
                             )
                         }
-                        composable("smsReader") {
+                            composable("smsReader") {
                             SmsReaderScreen()
                         }
                         composable("transactionScreen") {
