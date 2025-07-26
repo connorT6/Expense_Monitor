@@ -73,7 +73,11 @@ fun CategoryScreen(
 }
 
 @Composable
-private fun CategoryView(categories: List<Category>, addCat: () -> Unit, delCat: (docId: String) -> Unit) {
+private fun CategoryView(
+    categories: List<Category>,
+    addCat: () -> Unit,
+    delCat: (docId: String) -> Unit
+) {
 
     Column {
         Row(
@@ -92,9 +96,9 @@ private fun CategoryView(categories: List<Category>, addCat: () -> Unit, delCat:
         }
         LazyColumn {
             items(categories) {
-                ListItem(it.name, null, it.iconName, R.drawable.ic_car_fuel, it.id) { id ->
+                ListItem(it.name, null, it.iconName, R.drawable.ic_car_fuel, it.id, { id ->
                     delCat.invoke(id)
-                }
+                }, null)
             }
         }
     }

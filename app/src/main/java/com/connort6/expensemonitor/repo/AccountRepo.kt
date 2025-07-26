@@ -26,12 +26,16 @@ data class Account(
     @ServerTimestamp val lastUpdated: Timestamp? = null,
     val order: Int = 0,
     val iconName: String = "",
-    val smsSenders: List<SMSOperators> = listOf(),
+    val smsSenders: List<SMSOperator> = listOf(),
 )
 
-data class SMSOperators(val address: String, val parsers: List<SMSParser>)
+data class SMSOperator(val address: String = "", val parsers: List<SMSParser> = listOf())
 
-data class SMSParser(val pattern: String, val transactionType: TransactionType)
+data class SMSParser(val pattern: String = "", val transactionType: TransactionType = TransactionType.CREDIT)
+
+enum class SMSParseKeys(val matchingRegex: String) {
+    AMOUNT("\\d+\\.\\d{2}");
+}
 
 data class AccBalUpdate(
     var balance: Double = 0.0,
@@ -48,7 +52,7 @@ class AccountRepo private constructor(
     private val _accounts = MutableStateFlow<List<Account>>(listOf())
     private val _mainAcc = MutableStateFlow(Account())
 
-    private val _allSmsSenders = MutableStateFlow<List<SMSOperators>>(listOf())
+    private val _allSmsSenders = MutableStateFlow<List<SMSOperator>>(listOf())
     val allSmsSendersFlow = _allSmsSenders.asStateFlow()
 
     val accountFlow = _accounts.asStateFlow()
@@ -63,7 +67,8 @@ class AccountRepo private constructor(
         getAllAccounts()
         CoroutineScope(Dispatchers.Default).launch {
             accountFlow.collect {
-                _allSmsSenders.value = it.flatMap { acc -> acc.smsSenders }.distinct().sortedBy { it.address }
+                _allSmsSenders.value =
+                    it.flatMap { acc -> acc.smsSenders }.distinct().sortedBy { it.address }
             }
         }
     }
@@ -96,8 +101,9 @@ class AccountRepo private constructor(
         }).await()
     }
 
-    suspend fun update(account: Account): String? {
-        val updated = collection.document(account.id).set(account).await()
+    suspend fun update(account: Account): String {
+
+        val updated = collection.document(account.id).set(account.copy(lastUpdated = null)).await()
         return account.id
     }
 
