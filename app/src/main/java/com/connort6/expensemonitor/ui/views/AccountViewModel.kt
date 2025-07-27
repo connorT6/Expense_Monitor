@@ -143,13 +143,13 @@ class AccountViewModel : ViewModel(), IAccountViewModel {
             accountRepo.getById(accountId)?.let { account ->
                 val smsSenders = account.smsSenders.toMutableList()
                 var smsOperator = smsSenders.find { it.address == address } ?: SMSOperator(
-                    address,
-                    mutableListOf()
+                    address = address
                 )
 
                 smsSenders.removeIf { it.address == address }
                 smsOperator = smsOperator.copy(
                     parsers = smsOperator.parsers.toMutableList() + SMSParser(
+                        account.id,
                         parseRule,
                         transactionType
                     )
@@ -210,7 +210,11 @@ class MockAccountViewModel : IAccountViewModel {
                 SMSOperator(
                     address = "MyBankAlerts",
                     parsers = mutableListOf(
-                        SMSParser("Balance is \\$(\\d+\\.\\d+)", TransactionType.CREDIT)
+                        SMSParser(
+                            "id_bank_savings",
+                            "Balance is \\$(\\d+\\.\\d+)",
+                            TransactionType.CREDIT
+                        )
                     )
                 )
             )
@@ -312,12 +316,21 @@ class MockAccountViewModel : IAccountViewModel {
 
             if (operator == null) {
                 operator =
-                    SMSOperator(address, mutableListOf(SMSParser(parseRule, transactionType)))
+                    SMSOperator(
+                        address = address,
+                        parsers = mutableListOf(
+                            SMSParser(
+                                currentAccount.id,
+                                parseRule,
+                                transactionType
+                            )
+                        )
+                    )
                 existingOperators.add(operator)
             } else {
                 val operatorIndex = existingOperators.indexOf(operator)
                 val newParsers = operator.parsers.toMutableList().apply {
-                    add(SMSParser(parseRule, transactionType))
+                    add(SMSParser(currentAccount.id, parseRule, transactionType))
                 }
                 operator = operator.copy(parsers = newParsers)
                 existingOperators[operatorIndex] = operator
