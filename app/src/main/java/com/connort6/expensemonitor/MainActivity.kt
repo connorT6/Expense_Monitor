@@ -21,6 +21,7 @@ import com.connort6.expensemonitor.ui.views.HomeScreenViewModel
 import com.connort6.expensemonitor.ui.views.IconPicker
 import com.connort6.expensemonitor.ui.views.IconPickerViewModel
 import com.connort6.expensemonitor.ui.views.SmsReaderScreen
+import com.connort6.expensemonitor.ui.views.SmsViewModel
 import com.connort6.expensemonitor.ui.views.TransactionScreen
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -73,8 +74,9 @@ class MainActivity : ComponentActivity() {
                                 iconPickerViewModel = iconPickerViewModel
                             )
                         }
-                            composable("smsReader") {
-                            SmsReaderScreen()
+                        composable("smsReader") {
+                            val smsViewModel: SmsViewModel = viewModel()
+                            SmsReaderScreen(smsViewModel)
                         }
                         composable("transactionScreen") {
                             TransactionScreen()

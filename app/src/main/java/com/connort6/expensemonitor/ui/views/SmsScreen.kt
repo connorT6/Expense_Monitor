@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -47,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.connort6.expensemonitor.repo.SMSOperator
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -54,7 +57,7 @@ import java.util.Locale
 
 @Composable
 fun SmsReaderScreen(
-    smsViewModel: SmsViewModel = viewModel()
+    smsViewModel: ISmsViewModel
 ) {
     val context = LocalContext.current
     // States from ViewModel
@@ -90,38 +93,6 @@ fun SmsReaderScreen(
         }
     }
 
-    SmsReaderScreenView(
-        smsMessages = smsMessages,
-        isLoading = isLoading,
-        error = error,
-        permissionGranted = permissionGranted,
-        onRequestPermission = {
-            permissionLauncher.launch(Manifest.permission.READ_SMS)
-        },
-        onRetry = { smsViewModel.loadSmsMessages(SMSLoadMethod.BOUNDED_ONLY) },
-        onSaveSms = { smsViewModel.saveSmsMessage(it) },
-        allSenders = smsSenders,
-        { filterOperators ->
-            smsViewModel.loadSmsMessages(
-                SMSLoadMethod.ALL,
-                filterOperators.map { it.address })
-        }
-    )
-}
-
-@Composable
-private fun SmsReaderScreenView(
-    smsMessages: List<SmsMessage>,
-    isLoading: Boolean,
-    error: String?,
-    permissionGranted: Boolean,
-    onRequestPermission: () -> Unit,
-    onRetry: () -> Unit,
-    onSaveSms: (SmsMessage) -> Unit,
-    allSenders: List<SMSOperator>,
-    filterSenders: (List<SMSOperator>) -> Unit
-) {
-
     var showSMSList by remember { mutableStateOf(true) }
 
     Column(
@@ -130,17 +101,15 @@ private fun SmsReaderScreenView(
         if (!permissionGranted) {
             Text("READ_SMS permission is required to display messages.")
             Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = onRequestPermission) {
+            Button(onClick = { permissionLauncher.launch(Manifest.permission.READ_SMS) }) {
                 Text("Request Permission")
             }
         } else {
             // Content when permission is granted
-            if (isLoading) {
-                CircularProgressIndicator()
-            } else if (error != null) {
+            if (error != null) {
                 Text("Error: $error", color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onRetry) {
+                Button(onClick = { smsViewModel.loadSmsMessages(SMSLoadMethod.BOUNDED_ONLY) }) {
                     Text("Retry")
                 }
             } else {
@@ -149,16 +118,22 @@ private fun SmsReaderScreenView(
                     horizontalArrangement = Arrangement.Absolute.Right,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    DropdownTextField(allSenders, {
-                        filterSenders(listOf(it))
+                    DropdownTextField(smsSenders, {
+                        smsViewModel.loadSmsMessages(
+                            SMSLoadMethod.ALL,
+                            listOf(it.address)
+                        )
                     }, { it.address }, Modifier.weight(1f))
 
                     Spacer(modifier = Modifier.height(8.dp))
 
                     MinimalDropdownMenu({ showSMSList = !showSMSList })
                 }
-
-                if (smsMessages.isEmpty()) {
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(), contentAlignment = Alignment.Center){
+                        CircularProgressIndicator()
+                    }
+                } else if (smsMessages.isEmpty()) {
                     Text("No matching SMS messages found.")
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
@@ -167,13 +142,12 @@ private fun SmsReaderScreenView(
                                 smsMessages,
                                 key = { it.id }) { sms -> // Add a key for better performance
                                 SmsItemView(sms) {
-                                    onSaveSms(it)
+                                    smsViewModel.saveSmsMessage(it)
                                 }
-
                                 HorizontalDivider()
                             }
                         } else {
-                            items(allSenders) { sender ->
+                            items(smsSenders) { sender ->
                                 SenderItemView(sender.address)
                                 HorizontalDivider()
                             }
@@ -257,40 +231,7 @@ fun MinimalDropdownMenu(showSenders: () -> Unit) {
 @Composable
 fun SmsReaderScreenPreview() {
     ExpenseMonitorTheme {
-        val sampleMessages = listOf(
-            SmsMessage(
-                "1",
-                "5555",
-                "This is a test SMS message body 1. It contains some text.",
-                System.currentTimeMillis() - 100000,
-                type = 1 // Assuming 1 for received, adjust as needed
-            ),
-            SmsMessage(
-                "2",
-                "5555",
-                "Another test SMS from the same sender with different content.",
-                System.currentTimeMillis() - 200000,
-                type = 1 // Assuming 1 for received
-            ),
-            SmsMessage(
-                "3",
-                "Friend",
-                "Hello!",
-                System.currentTimeMillis() - 300000,
-                type = 2 // Assuming 2 for sent, adjust as needed
-            )
-        )
-        SmsReaderScreenView(
-            smsMessages = sampleMessages,
-            isLoading = false,
-            error = null,
-            permissionGranted = true,
-            onRequestPermission = {},
-            onRetry = {},
-            onSaveSms = {},
-            allSenders = sampleMessages.map { SMSOperator(it.address) },
-            {}
-        )
+        SmsReaderScreen(MockSmsViewModel())
     }
 }
 

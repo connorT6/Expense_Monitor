@@ -4,8 +4,8 @@ package com.connort6.expensemonitor.ui.views
 import android.app.Application
 import android.content.ContentResolver
 import android.database.Cursor
-import android.provider.ContactsContract
 import android.net.Uri
+import android.provider.ContactsContract
 import android.provider.Telephony
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,6 +14,8 @@ import com.connort6.expensemonitor.repo.SMSOperator
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.SmsRepo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,19 +36,33 @@ enum class SMSLoadMethod {
     BOUNDED_ONLY
 }
 
-class SmsViewModel(application: Application) : AndroidViewModel(application) {
+// ISmsViewModel.kt
+interface ISmsViewModel {
+    val smsMessages: StateFlow<List<SmsMessage>>
+    val smsSenders: StateFlow<List<SMSOperator>>
+    val isLoading: StateFlow<Boolean>
+    val error: StateFlow<String?>
+
+    fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String> = emptyList())
+    fun clearError()
+    fun saveSmsMessage(smsMessage: SmsMessage)
+    // Add any other public methods from your SmsViewModel
+}
+
+
+class SmsViewModel(application: Application) : AndroidViewModel(application), ISmsViewModel {
 
     private val _smsMessages = MutableStateFlow<List<SmsMessage>>(emptyList())
-    val smsMessages: StateFlow<List<SmsMessage>> = _smsMessages.asStateFlow()
+    override val smsMessages: StateFlow<List<SmsMessage>> = _smsMessages.asStateFlow()
 
     private val _smsSenders = MutableStateFlow<List<SMSOperator>>(emptyList())
-    val smsSenders: StateFlow<List<SMSOperator>> = _smsSenders.asStateFlow()
+    override val smsSenders: StateFlow<List<SMSOperator>> = _smsSenders.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    override val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    override val error: StateFlow<String?> = _error.asStateFlow()
 
     private val contentResolver: ContentResolver = application.contentResolver
 
@@ -63,9 +79,10 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String> = emptyList()) {
+    override fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String>) {
         viewModelScope.launch {
             _isLoading.value = true
+            delay(1500)
             _error.value = null
             try {
                 var addresses: List<String> = allowedSenders
@@ -158,11 +175,11 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun clearError() {
+    override fun clearError() {
         _error.value = null
     }
 
-    fun saveSmsMessage(smsMessage: SmsMessage) {
+    override fun saveSmsMessage(smsMessage: SmsMessage) {
         viewModelScope.launch {
             smsRepo.saveSms(smsMessage)
         }
@@ -234,4 +251,147 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
         }
         return contactName
     }
+}
+
+
+class MockSmsViewModel : ISmsViewModel {
+
+    private val _smsMessages = MutableStateFlow<List<SmsMessage>>(emptyList())
+    override val smsMessages: StateFlow<List<SmsMessage>> = _smsMessages.asStateFlow()
+    // Or for non-interface version:
+    // val smsMessages: StateFlow<List<SmsMessage>> get() = _smsMessages.asStateFlow()
+
+
+    private val _smsSenders = MutableStateFlow<List<SMSOperator>>(emptyList())
+    override val smsSenders: StateFlow<List<SMSOperator>> = _smsSenders.asStateFlow()
+    // Or for non-interface version:
+    // val smsSenders: StateFlow<List<SMSOperator>> get() = _smsSenders.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    override val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    // Or for non-interface version:
+    // val isLoading: StateFlow<Boolean> get() = _isLoading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    override val error: StateFlow<String?> = _error.asStateFlow()
+    // Or for non-interface version:
+    // val error: StateFlow<String?> get() = _error.asStateFlow()
+
+    init {
+        // Populate with sample data
+        _smsMessages.value = listOf(
+            SmsMessage(
+                "1",
+                "Savings Bank",
+                "Your account balance is $1,250.50",
+                System.currentTimeMillis() - 100000,
+                1
+            ),
+            SmsMessage(
+                "2",
+                "Credit Card Co.",
+                "Alert: A transaction of $75.20 was made.",
+                System.currentTimeMillis() - 200000,
+                1
+            ),
+            SmsMessage(
+                "3",
+                "Mobile Carrier",
+                "Your bill for $45.00 is due on 07/15.",
+                System.currentTimeMillis() - 300000,
+                1
+            ),
+            SmsMessage(
+                "4",
+                "Utility Services",
+                "Reminder: Payment for electricity is $88.90.",
+                System.currentTimeMillis() - 400000,
+                1
+            )
+        )
+
+        _smsSenders.value = listOf(
+            SMSOperator("Savings Bank",),
+            SMSOperator("Credit Card Co."),
+            SMSOperator("Mobile Carrier"),
+            SMSOperator("Utility Services"),
+            SMSOperator("Known Contact")
+        )
+
+        _isLoading.value = false
+        _error.value = null // Or set a sample error: "Sample error message"
+    }
+
+    // Mock implementations of the methods
+    override fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String>) {
+//        _isLoading.value = true
+        // Simulate a delay
+        // In a real test, you might use TestCoroutineDispatcher here
+        GlobalScope.launch { // Use an appropriate scope for tests/previews
+            delay(500) // Simulate network delay
+            if (smsLoadMethod == SMSLoadMethod.ALL) {
+                _smsMessages.value = listOf(
+                    SmsMessage(
+                        "1",
+                        "Savings Bank",
+                        "All: Your account balance is $1,250.50",
+                        System.currentTimeMillis() - 100000,
+                        1
+                    ),
+                    SmsMessage(
+                        "2",
+                        "Credit Card Co.",
+                        "All: Alert: A transaction of $75.20 was made.",
+                        System.currentTimeMillis() - 200000,
+                        1
+                    ),
+                    SmsMessage(
+                        "3",
+                        "Mobile Carrier",
+                        "All: Your bill for $45.00 is due on 07/15.",
+                        System.currentTimeMillis() - 300000,
+                        1
+                    )
+                )
+            } else { // BOUNDED_ONLY
+                _smsMessages.value = if (allowedSenders.isEmpty()) {
+                    // Simulating BOUNDED_ONLY with current mock senders
+                    listOf(
+                        SmsMessage(
+                            "1",
+                            "Savings Bank",
+                            "Bounded: Your account balance is $1,250.50",
+                            System.currentTimeMillis() - 100000,
+                            1
+                        ),
+                        SmsMessage(
+                            "2",
+                            "Credit Card Co.",
+                            "Bounded: Alert: A transaction of $75.20 was made.",
+                            System.currentTimeMillis() - 200000,
+                            1
+                        )
+                    )
+                } else {
+                    // Filter based on allowedSenders for more specific mock behavior
+                    _smsMessages.value.filter { msg -> allowedSenders.contains(msg.address) }
+                }
+            }
+            _isLoading.value = false
+        }
+    }
+
+    override fun clearError() {
+        _error.value = null
+    }
+
+    override fun saveSmsMessage(smsMessage: SmsMessage) {
+        // You could add the message to the list for testing, or just log
+        println("MockSmsViewModel: saveSmsMessage called with: $smsMessage")
+        val currentMessages = _smsMessages.value.toMutableList()
+        currentMessages.add(0, smsMessage) // Add to top for visibility
+        _smsMessages.value = currentMessages
+    }
+
+    // Add mock implementations for any other public methods from your ISmsViewModel/SmsViewModel
 }
