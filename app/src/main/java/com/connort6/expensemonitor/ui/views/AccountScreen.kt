@@ -539,6 +539,7 @@ fun <T> DropdownTextField(
                     text = { Text(labelProcessor.invoke(option)) },
                     onClick = {
                         selectedOption = option
+                        onOptionSelected.invoke(option)
                         expanded = false
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding

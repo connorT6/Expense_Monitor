@@ -37,12 +37,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.connort6.expensemonitor.repo.SMSOperator
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import java.text.SimpleDateFormat
@@ -59,7 +61,7 @@ fun SmsReaderScreen(
     val smsMessages by smsViewModel.smsMessages.collectAsStateWithLifecycle()
     val isLoading by smsViewModel.isLoading.collectAsStateWithLifecycle()
     val error by smsViewModel.error.collectAsStateWithLifecycle()
-    val allSmsSenders by smsViewModel.smsSenders.collectAsState()
+    val smsSenders by smsViewModel.smsSenders.collectAsState()
 
     var permissionGranted by remember {
         mutableStateOf(
@@ -98,7 +100,12 @@ fun SmsReaderScreen(
         },
         onRetry = { smsViewModel.loadSmsMessages(SMSLoadMethod.BOUNDED_ONLY) },
         onSaveSms = { smsViewModel.saveSmsMessage(it) },
-        allSenders = allSmsSenders
+        allSenders = smsSenders,
+        { filterOperators ->
+            smsViewModel.loadSmsMessages(
+                SMSLoadMethod.ALL,
+                filterOperators.map { it.address })
+        }
     )
 }
 
@@ -111,7 +118,8 @@ private fun SmsReaderScreenView(
     onRequestPermission: () -> Unit,
     onRetry: () -> Unit,
     onSaveSms: (SmsMessage) -> Unit,
-    allSenders: List<String>
+    allSenders: List<SMSOperator>,
+    filterSenders: (List<SMSOperator>) -> Unit
 ) {
 
     var showSMSList by remember { mutableStateOf(true) }
@@ -135,31 +143,40 @@ private fun SmsReaderScreenView(
                 Button(onClick = onRetry) {
                     Text("Retry")
                 }
-            } else if (smsMessages.isEmpty()) {
-                Text("No matching SMS messages found.")
             } else {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Absolute.Right
+                    horizontalArrangement = Arrangement.Absolute.Right,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    MinimalDropdownMenu({showSMSList = !showSMSList})
+                    DropdownTextField(allSenders, {
+                        filterSenders(listOf(it))
+                    }, { it.address }, Modifier.weight(1f))
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    MinimalDropdownMenu({ showSMSList = !showSMSList })
                 }
 
-                LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
-                    if (showSMSList) {
-                        items(
-                            smsMessages,
-                            key = { it.id }) { sms -> // Add a key for better performance
-                            SmsItemView(sms) {
-                                onSaveSms(it)
-                            }
+                if (smsMessages.isEmpty()) {
+                    Text("No matching SMS messages found.")
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
+                        if (showSMSList) {
+                            items(
+                                smsMessages,
+                                key = { it.id }) { sms -> // Add a key for better performance
+                                SmsItemView(sms) {
+                                    onSaveSms(it)
+                                }
 
-                            HorizontalDivider()
-                        }
-                    } else {
-                        items(allSenders) { sender ->
-                            SenderItemView(sender)
-                            HorizontalDivider()
+                                HorizontalDivider()
+                            }
+                        } else {
+                            items(allSenders) { sender ->
+                                SenderItemView(sender.address)
+                                HorizontalDivider()
+                            }
                         }
                     }
                 }
@@ -212,7 +229,9 @@ fun MinimalDropdownMenu(showSenders: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
-            .padding(end = 16.dp)
+            .padding(end = 16.dp),
+        contentAlignment = Alignment.Center
+
     ) {
         IconButton(onClick = { expanded = !expanded }) {
             Icon(Icons.Default.MoreVert, contentDescription = "More options")
@@ -269,7 +288,8 @@ fun SmsReaderScreenPreview() {
             onRequestPermission = {},
             onRetry = {},
             onSaveSms = {},
-            allSenders = sampleMessages.map { it.address }
+            allSenders = sampleMessages.map { SMSOperator(it.address) },
+            {}
         )
     }
 }
@@ -392,26 +412,6 @@ fun AutoCompleteTextViewPreview() {
     }
 }
 
-// --- Example Usage ---
-@Composable
-fun MyScreenWithAutoComplete() {
-    val programmingLanguages = listOf(
-        "Kotlin", "Java", "Swift", "Python", "JavaScript",
-        "C++", "C#", "Ruby", "Go", "Rust", "Dart"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text("Search for a programming language:")
-        AutoCompleteTextView(allSuggestions = programmingLanguages)
-
-        // Add more content here
-    }
-}
 
 @Preview
 @Composable

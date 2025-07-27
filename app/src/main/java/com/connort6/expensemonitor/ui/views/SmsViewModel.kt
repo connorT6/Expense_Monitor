@@ -10,6 +10,7 @@ import android.provider.Telephony
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.AccountRepo
+import com.connort6.expensemonitor.repo.SMSOperator
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.SmsRepo
 import kotlinx.coroutines.Dispatchers
@@ -38,8 +39,8 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
     private val _smsMessages = MutableStateFlow<List<SmsMessage>>(emptyList())
     val smsMessages: StateFlow<List<SmsMessage>> = _smsMessages.asStateFlow()
 
-    private val _smsSenders = MutableStateFlow<List<String>>(emptyList())
-    val smsSenders: StateFlow<List<String>> = _smsSenders.asStateFlow()
+    private val _smsSenders = MutableStateFlow<List<SMSOperator>>(emptyList())
+    val smsSenders: StateFlow<List<SMSOperator>> = _smsSenders.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -54,15 +55,20 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
     private val accountRepo = AccountRepo.getInstance()
 
     init {
-        loadSmsSenders()
+//        loadAllSmsSenders()
+        viewModelScope.launch {
+            accountRepo.allSmsSendersFlow.collect({
+                _smsSenders.value = it
+            })
+        }
     }
 
-    fun loadSmsMessages(smsLoadMethod: SMSLoadMethod) {
+    fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String> = emptyList()) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
-                var addresses: List<String> = listOf()
+                var addresses: List<String> = allowedSenders
                 if (smsLoadMethod == SMSLoadMethod.BOUNDED_ONLY) {
                     addresses = accountRepo.allSmsSendersFlow.value.map { it.address }
                 }
@@ -162,13 +168,13 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun loadSmsSenders() {
+    private fun loadAllSmsSenders() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
                 val senders = getSmsSenders()
-                _smsSenders.value = senders
+                _smsSenders.value = senders.map { SMSOperator(it) }
             } catch (e: Exception) {
                 e.printStackTrace()
                 _error.value = "Failed to load SMS senders: ${e.message}"
