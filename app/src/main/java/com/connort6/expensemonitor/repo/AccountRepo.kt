@@ -61,11 +61,7 @@ class AccountRepo private constructor(
             accountFlow.collect {
                 _allSmsSenders.value =
                     it.flatMap { acc ->
-                        acc.smsSenders.map {
-                            it.copy(
-                                accountId = acc.id
-                            )
-                        }
+                        acc.smsSenders
                     }.distinct().sortedBy { it.address }
             }
         }
