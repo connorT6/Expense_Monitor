@@ -7,6 +7,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
 import android.provider.Telephony
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.AccountRepo
@@ -15,6 +16,7 @@ import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.SmsRepo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -89,7 +91,15 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
                 if (smsLoadMethod == SMSLoadMethod.BOUNDED_ONLY) {
                     addresses = accountRepo.allSmsSendersFlow.value.map { it.address }
                 }
-                val messages = readSmsFromProvider(addresses)
+                val messageTask = async { readSmsFromProvider(addresses) }
+                val processedSmsDetails = async { smsRepo.smsDetails.value }
+                val result = Pair(messageTask.await(), processedSmsDetails.await())
+                val messages = result.first.map { smsMessage ->
+                    result.second.smsIds.find { it == smsMessage.id }?.let {
+                        smsMessage.processed = true
+                        smsMessage
+                    } ?: smsMessage
+                }
                 _smsMessages.value = messages
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -161,17 +171,11 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(this@SmsViewModel::class.java.simpleName, "Error loading SMS messages", e)
             } finally {
                 cursor?.close()
             }
-            // Catching specific exceptions can be more robust here
-            // For now, a general Exception is fine for demonstration
-            // The try-catch in loadSmsMessages will handle the UI update for errors
-
-            // No finally to close cursor here, as cursor?.use handles it.
-            // The try-catch in the calling function (loadSmsMessages) handles errors for UI.
-            smsList // Return the list
+            smsList
         }
     }
 
@@ -311,7 +315,7 @@ class MockSmsViewModel : ISmsViewModel {
         )
 
         _smsSenders.value = listOf(
-            SMSOperator("Savings Bank",),
+            SMSOperator("Savings Bank"),
             SMSOperator("Credit Card Co."),
             SMSOperator("Mobile Carrier"),
             SMSOperator("Utility Services"),

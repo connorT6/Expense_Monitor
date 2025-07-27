@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -24,13 +23,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,11 +41,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.connort6.expensemonitor.repo.SMSOperator
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
-import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -234,125 +227,6 @@ fun SmsReaderScreenPreview() {
         SmsReaderScreen(MockSmsViewModel())
     }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AutoCompleteTextView(
-    modifier: Modifier = Modifier,
-    label: String = "Search",
-    allSuggestions: List<String> // List of all possible suggestions
-) {
-    var text by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
-    var filteredSuggestions by remember { mutableStateOf(allSuggestions) }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = modifier
-    ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { newText ->
-                text = newText
-                filteredSuggestions = if (newText.isNotBlank()) {
-                    allSuggestions.filter {
-                        it.contains(newText, ignoreCase = true)
-                    }
-                } else {
-                    allSuggestions
-                }
-                expanded = filteredSuggestions.isNotEmpty()
-            },
-            label = { Text(label) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(), // Important: This anchors the dropdown to the text field
-            singleLine = true
-        )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            filteredSuggestions.forEach { suggestion ->
-                DropdownMenuItem(
-                    text = { Text(suggestion) },
-                    onClick = {
-                        text = suggestion
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-
-    /*    Column(modifier = modifier) {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { newText ->
-                    text = newText
-                    filteredSuggestions = if (newText.isNotBlank()) {
-                        allSuggestions.filter {
-                            it.contains(newText, ignoreCase = true)
-                        }
-                    } else {
-                        allSuggestions
-                    }
-                    expanded = filteredSuggestions.isNotEmpty()
-                },
-                label = { Text(label) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    *//*.onFocusChanged { focusState ->
-                    if (focusState.isFocused && text.isNotBlank() && filteredSuggestions.isNotEmpty()) {
-                        expanded = true
-                    } else if (!focusState.isFocused) {
-                        // Delay hiding to allow click on dropdown item
-                        // A more robust solution might involve interactionSource
-                        // or a small delay before setting expanded to false
-                        // expanded = false
-                    }
-                }*//*,
-            singleLine = true
-        )
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = {*//* expanded = false*//* },
-            modifier = Modifier.fillMaxWidth(),
-            // Use PopupProperties to control the dropdown's behavior if needed
-            // properties = PopupProperties(focusable = false) // Prevents stealing focus
-        ) {
-            filteredSuggestions.forEach { suggestion ->
-                DropdownMenuItem(
-                    text = { Text(suggestion) },
-                    onClick = {
-                        text = suggestion
-                        expanded = false
-//                        focusManager.clearFocus() // Clear focus after selection
-                    }
-                )
-            }
-        }
-    }*/
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AutoCompleteTextViewPreview() {
-    ExpenseMonitorTheme {
-        val sampleSuggestions = listOf(
-            "Apple", "Banana", "Cherry", "Date", "Elderberry",
-            "Fig", "Grape", "Honeydew"
-        )
-        AutoCompleteTextView(
-            allSuggestions = sampleSuggestions,
-            label = "Search for a fruit"
-        )
-    }
-}
-
 
 @Preview
 @Composable

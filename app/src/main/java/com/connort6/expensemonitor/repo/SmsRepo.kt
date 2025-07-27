@@ -2,10 +2,10 @@ package com.connort6.expensemonitor.repo
 
 import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ServerTimestamp
 import com.google.firebase.firestore.SetOptions
-import com.google.firebase.firestore.Source
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -24,6 +24,8 @@ data class SmsMessage(
     val type: Int, // e.g., Telephony.Sms.MESSAGE_TYPE_INBOX
     var docId: String = "",
     @ServerTimestamp val lastUpdated: Timestamp? = null,
+    @get:Exclude
+    var processed: Boolean = false
 )
 
 class SmsRepo private constructor() {

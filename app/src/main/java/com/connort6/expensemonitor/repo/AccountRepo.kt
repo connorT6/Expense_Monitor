@@ -29,14 +29,6 @@ data class Account(
     val smsSenders: List<SMSOperator> = listOf(),
 )
 
-data class SMSOperator(val address: String = "", val parsers: List<SMSParser> = listOf())
-
-data class SMSParser(val pattern: String = "", val transactionType: TransactionType = TransactionType.CREDIT)
-
-enum class SMSParseKeys(val matchingRegex: String) {
-    AMOUNT("\\d+\\.\\d{2}");
-}
-
 data class AccBalUpdate(
     var balance: Double = 0.0,
     @ServerTimestamp val lastUpdated: Timestamp? = null,
@@ -68,7 +60,13 @@ class AccountRepo private constructor(
         CoroutineScope(Dispatchers.Default).launch {
             accountFlow.collect {
                 _allSmsSenders.value =
-                    it.flatMap { acc -> acc.smsSenders }.distinct().sortedBy { it.address }
+                    it.flatMap { acc ->
+                        acc.smsSenders.map {
+                            it.copy(
+                                accountId = acc.id
+                            )
+                        }
+                    }.distinct().sortedBy { it.address }
             }
         }
     }
