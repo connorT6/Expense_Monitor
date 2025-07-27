@@ -22,8 +22,8 @@ open class MainRepository<T : BaseEntity>(
     protected val _allData = MutableStateFlow(listOf<T>())
 
     fun loadAll(collection: CollectionReference) {
-        collection.whereEqualTo("deleted", false)
-            .orderBy("lastUpdated", Query.Direction.DESCENDING)
+        collection.whereEqualTo(BaseEntity::deleted.name, false)
+            .orderBy(BaseEntity::lastUpdated.name, Query.Direction.DESCENDING)
             .get(Source.CACHE)
             .addOnSuccessListener { snapshot ->
                 val sortByUpTime = snapshot.toObjects(clazz)
@@ -42,8 +42,8 @@ open class MainRepository<T : BaseEntity>(
     }
 
     private fun checkDataAvailable(collection: CollectionReference) {
-        collection.whereEqualTo("deleted", false)
-            .orderBy("lastUpdated", Query.Direction.DESCENDING)
+        collection.whereEqualTo(BaseEntity::deleted.name, false)
+            .orderBy(BaseEntity::lastUpdated.name, Query.Direction.DESCENDING)
             .get(Source.SERVER)
             .let { it ->
                 it.addOnSuccessListener { querySnapshot ->
@@ -65,8 +65,8 @@ open class MainRepository<T : BaseEntity>(
     }
 
     private fun listenToChanges(collection: CollectionReference, timestamp: Timestamp) {
-        collection.whereGreaterThan("lastUpdated", timestamp)
-            .orderBy("lastUpdated", Query.Direction.DESCENDING)
+        collection.whereGreaterThan(BaseEntity::lastUpdated.name, timestamp)
+            .orderBy(BaseEntity::lastUpdated.name, Query.Direction.DESCENDING)
             .addSnapshotListener { value, error ->
                 if (error != null) {
                     return@addSnapshotListener

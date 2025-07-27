@@ -4,30 +4,25 @@ import android.util.Log
 import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ServerTimestamp
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.Transaction
 import jakarta.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 data class Account(
-    var id: String = "",
+    override var id: String = "",
     val name: String = "",
     var balance: Double = 0.0,
-    var deleted: Boolean = false,
-    @ServerTimestamp val lastUpdated: Timestamp? = null,
+    override var deleted: Boolean = false,
+    @ServerTimestamp override val lastUpdated: Timestamp? = null,
     val order: Int = 0,
     val iconName: String = "",
-    val smsSenders: List<SMSOperator> = listOf(),
-)
+//    val smsSenders: List<SMSOperator> = listOf(),
+) : BaseEntity
 
 data class AccBalUpdate(
     var balance: Double = 0.0,
@@ -35,19 +30,21 @@ data class AccBalUpdate(
 )
 
 @Singleton
-class AccountRepo private constructor(
+class AccountRepo private constructor() : MainRepository<Account>(
+    Account::class.java,
+    { it.lastUpdated },
+    { list -> list.sortedByDescending { it.order } }
 ) {
 
     private val accountRef = mainCollection.document("accounts")
     private val collection = accountRef.collection("Accounts")
 
-    private val _accounts = MutableStateFlow<List<Account>>(listOf())
     private val _mainAcc = MutableStateFlow(Account())
 
     private val _allSmsSenders = MutableStateFlow<List<SMSOperator>>(listOf())
     val allSmsSendersFlow = _allSmsSenders.asStateFlow()
 
-    val accountFlow = _accounts.asStateFlow()
+    val accountFlow = _allData.asStateFlow()
     val mainAccount = _mainAcc.asStateFlow()
 
     init {
@@ -57,14 +54,14 @@ class AccountRepo private constructor(
             }
         }
         getAllAccounts()
-        CoroutineScope(Dispatchers.Default).launch {
-            accountFlow.collect {
-                _allSmsSenders.value =
-                    it.flatMap { acc ->
-                        acc.smsSenders
-                    }.distinct().sortedBy { it.address }
-            }
-        }
+//        CoroutineScope(Dispatchers.Default).launch {
+//            accountFlow.collect {
+//                _allSmsSenders.value =
+//                    it.flatMap { acc ->
+//                        acc.smsSenders
+//                    }.distinct().sortedBy { it.address }
+//            }
+//        }
     }
 
     suspend fun createAccount(account: Account): String {
@@ -103,27 +100,7 @@ class AccountRepo private constructor(
 
     private fun getAllAccounts() {
         Log.d("REPO", "getAllAccounts: ")
-        val snapshot =
-            collection.whereEqualTo(Account::deleted.name, false)
-                .orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(Source.CACHE)
-
-
-        snapshot.let { it ->
-            it.addOnSuccessListener { querySnapshot ->
-                val accountsOrderedUpTime =
-                    querySnapshot.toObjects(Account::class.java) // accounts orders by last updated time
-                if (accountsOrderedUpTime.isNotEmpty()) {
-                    listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
-                    val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
-                    _accounts.value = sortedByDescending
-                } else {
-                    checkDataAvailable()
-                }
-            }
-            it.addOnFailureListener {
-                Log.d("REPO", "getAllAccounts: ${it.message}")
-            }
-        }
+        loadAll(collection)
 
         accountRef.get(Source.CACHE).addOnSuccessListener { value ->
             if (value == null || !value.exists()) {
@@ -131,53 +108,12 @@ class AccountRepo private constructor(
             }
             val account = value.toObject(Account::class.java) ?: return@addOnSuccessListener
             _mainAcc.value = account
+            listenToMainAcc()
         }
+
     }
 
-    private fun checkDataAvailable() {
-        val snapshot =
-            collection.whereEqualTo(Account::deleted.name, false)
-                .orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING).get(Source.SERVER)
-        snapshot.let { it ->
-            it.addOnSuccessListener { querySnapshot ->
-                val accountsOrderedUpTime =
-                    querySnapshot.toObjects(Account::class.java) // accounts orders by last updated time
-                if (accountsOrderedUpTime.isNotEmpty()) {
-                    listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
-                    val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.order }
-                    _accounts.value = sortedByDescending
-                } else {
-                    listenToChanges(Timestamp.now())
-                }
-            }
-        }
-    }
-
-    private fun listenToChanges(lastUpdated: Timestamp) {
-        collection.whereGreaterThan(Account::lastUpdated.name, lastUpdated)
-            .orderBy(Account::lastUpdated.name, Query.Direction.DESCENDING)
-            .addSnapshotListener { value, error ->
-                if (error != null) {
-                    Log.d("REPO", "listenToChanges: ${error.message}")
-                    return@addSnapshotListener
-                }
-                value?.let { updated ->
-                    val elements =
-                        updated.toObjects(Account::class.java).filter { it.id.isNotEmpty() }.toSet()
-                    if (elements.isEmpty()) {
-                        return@addSnapshotListener
-                    }
-                    val updatedIds = elements.map { it.id }
-                    _accounts.update { list ->
-                        list.filterNot { updatedIds.contains(it.id) }
-                            .plus(elements.filter { !it.deleted })
-                            .sortedByDescending { it.order }
-                    }
-
-                    listenToChanges(elements.first().lastUpdated ?: Timestamp.now())
-                }
-            }
-
+    private fun listenToMainAcc() {
         accountRef.addSnapshotListener { value, error ->
             if (error != null) {
                 Log.d("REPO", "listenToChanges: ${error.message}")
@@ -190,7 +126,6 @@ class AccountRepo private constructor(
 
             val account = value.toObject(Account::class.java) ?: return@addSnapshotListener
             _mainAcc.value = account
-
         }
     }
 

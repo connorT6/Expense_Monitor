@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.AccountRepo
-import com.connort6.expensemonitor.repo.SMSOperator
-import com.connort6.expensemonitor.repo.SMSParser
 import com.connort6.expensemonitor.repo.TransactionType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -141,25 +139,25 @@ class AccountViewModel : ViewModel(), IAccountViewModel {
     ) {
         viewModelScope.launch {
             accountRepo.getById(accountId)?.let { account ->
-                val smsSenders = account.smsSenders.toMutableList()
-                var smsOperator = smsSenders.find { it.address == address } ?: SMSOperator(
-                    address = address
-                )
-
-                smsSenders.removeIf { it.address == address }
-                smsOperator = smsOperator.copy(
-                    parsers = smsOperator.parsers.toMutableList() + SMSParser(
-                        account.id,
-                        parseRule,
-                        transactionType
-                    )
-                )
-                smsSenders.add(smsOperator)
-                accountRepo.update(
-                    account.copy(
-                        smsSenders = smsSenders
-                    )
-                )
+//                val smsSenders = account.smsSenders.toMutableList()
+//                var smsOperator = smsSenders.find { it.address == address } ?: SMSOperator(
+//                    address = address
+//                )
+//
+//                smsSenders.removeIf { it.address == address }
+//                smsOperator = smsOperator.copy(
+//                    parsers = smsOperator.parsers.toMutableList() + SMSParser(
+//                        account.id,
+//                        parseRule,
+//                        transactionType
+//                    )
+//                )
+//                smsSenders.add(smsOperator)
+//                accountRepo.update(
+//                    account.copy(
+//                        smsSenders = smsSenders
+//                    )
+//                )
 
                 _processingAccount.value = null
             }
@@ -199,32 +197,32 @@ class MockAccountViewModel : IAccountViewModel {
             name = "Cash",
             balance = 150.75,
             iconName = "account_balance_wallet",
-            smsSenders = emptyList()
+//            smsSenders = emptyList()
         )
         val account2 = Account(
             id = "id_bank_savings",
             name = "Bank Savings",
             balance = 5270.20,
             iconName = "savings",
-            smsSenders = listOf(
-                SMSOperator(
-                    address = "MyBankAlerts",
-                    parsers = mutableListOf(
-                        SMSParser(
-                            "id_bank_savings",
-                            "Balance is \\$(\\d+\\.\\d+)",
-                            TransactionType.CREDIT
-                        )
-                    )
-                )
-            )
+//            smsSenders = listOf(
+//                SMSOperator(
+//                    address = "MyBankAlerts",
+//                    parsers = mutableListOf(
+//                        SMSParser(
+//                            "id_bank_savings",
+//                            "Balance is \\$(\\d+\\.\\d+)",
+//                            TransactionType.CREDIT
+//                        )
+//                    )
+//                )
+//            )
         )
         val account3 = Account(
             id = "id_credit_card",
             name = "Credit Card",
             balance = -340.50,
             iconName = "credit_card",
-            smsSenders = emptyList()
+//            smsSenders = emptyList()
         )
 
         sampleAccounts.addAll(listOf(account1, account2, account3))
@@ -308,43 +306,43 @@ class MockAccountViewModel : IAccountViewModel {
         parseRule: String,
         transactionType: TransactionType
     ) {
-        val accountIndex = sampleAccounts.indexOfFirst { it.id == accountId }
-        if (accountIndex != -1) {
-            val currentAccount = sampleAccounts[accountIndex]
-            val existingOperators = currentAccount.smsSenders.toMutableList()
-            var operator = existingOperators.find { it.address == address }
-
-            if (operator == null) {
-                operator =
-                    SMSOperator(
-                        address = address,
-                        parsers = mutableListOf(
-                            SMSParser(
-                                currentAccount.id,
-                                parseRule,
-                                transactionType
-                            )
-                        )
-                    )
-                existingOperators.add(operator)
-            } else {
-                val operatorIndex = existingOperators.indexOf(operator)
-                val newParsers = operator.parsers.toMutableList().apply {
-                    add(SMSParser(currentAccount.id, parseRule, transactionType))
-                }
-                operator = operator.copy(parsers = newParsers)
-                existingOperators[operatorIndex] = operator
-            }
-
-            val updatedAccount = currentAccount.copy(smsSenders = existingOperators)
-            sampleAccounts[accountIndex] = updatedAccount
-            _accountsState.update { it.copy(accounts = sampleAccounts.toList()) }
-            if (_processingAccount.value?.id == accountId) {
-                _processingAccount.value =
-                    updatedAccount // Update processing account if it's the one being modified
-            }
-        }
-        _processingAccount.value = null // As per original ViewModel
+//        val accountIndex = sampleAccounts.indexOfFirst { it.id == accountId }
+//        if (accountIndex != -1) {
+//            val currentAccount = sampleAccounts[accountIndex]
+//            val existingOperators = currentAccount.smsSenders.toMutableList()
+//            var operator = existingOperators.find { it.address == address }
+//
+//            if (operator == null) {
+//                operator =
+//                    SMSOperator(
+//                        address = address,
+//                        parsers = mutableListOf(
+//                            SMSParser(
+//                                currentAccount.id,
+//                                parseRule,
+//                                transactionType
+//                            )
+//                        )
+//                    )
+//                existingOperators.add(operator)
+//            } else {
+//                val operatorIndex = existingOperators.indexOf(operator)
+//                val newParsers = operator.parsers.toMutableList().apply {
+//                    add(SMSParser(currentAccount.id, parseRule, transactionType))
+//                }
+//                operator = operator.copy(parsers = newParsers)
+//                existingOperators[operatorIndex] = operator
+//            }
+//
+//            val updatedAccount = currentAccount.copy(smsSenders = existingOperators)
+//            sampleAccounts[accountIndex] = updatedAccount
+//            _accountsState.update { it.copy(accounts = sampleAccounts.toList()) }
+//            if (_processingAccount.value?.id == accountId) {
+//                _processingAccount.value =
+//                    updatedAccount // Update processing account if it's the one being modified
+//            }
+//        }
+//        _processingAccount.value = null // As per original ViewModel
         println("MockAccountViewModel: addSMSOperator called for accId: $accountId, address: $address")
     }
 }
