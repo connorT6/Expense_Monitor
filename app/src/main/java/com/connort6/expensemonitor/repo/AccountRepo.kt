@@ -18,7 +18,7 @@ data class Account(
     val name: String = "",
     var balance: Double = 0.0,
     override var deleted: Boolean = false,
-    @ServerTimestamp override val lastUpdated: Timestamp? = null,
+    @ServerTimestamp override var lastUpdated: Timestamp? = null,
     val order: Int = 0,
     val iconName: String = "",
 //    val smsSenders: List<SMSOperator> = listOf(),
@@ -37,12 +37,9 @@ class AccountRepo private constructor() : MainRepository<Account>(
 ) {
 
     private val accountRef = mainCollection.document("accounts")
-    private val collection = accountRef.collection("Accounts")
+    override var collection = accountRef.collection("Accounts")
 
     private val _mainAcc = MutableStateFlow(Account())
-
-    private val _allSmsSenders = MutableStateFlow<List<SMSOperator>>(listOf())
-    val allSmsSendersFlow = _allSmsSenders.asStateFlow()
 
     val accountFlow = _allData.asStateFlow()
     val mainAccount = _mainAcc.asStateFlow()
@@ -51,6 +48,10 @@ class AccountRepo private constructor() : MainRepository<Account>(
         accountRef.get().addOnSuccessListener {
             if (!it.exists()) {
                 accountRef.set(Account(name = "All")).addOnSuccessListener { }
+            } else {
+                it.toObject(Account::class.java)?.let { acc ->
+                    _mainAcc.value = acc
+                }
             }
         }
         getAllAccounts()
@@ -92,15 +93,10 @@ class AccountRepo private constructor() : MainRepository<Account>(
         }).await()
     }
 
-    suspend fun update(account: Account): String {
-
-        val updated = collection.document(account.id).set(account.copy(lastUpdated = null)).await()
-        return account.id
-    }
 
     private fun getAllAccounts() {
         Log.d("REPO", "getAllAccounts: ")
-        loadAll(collection)
+        loadAll()
 
         accountRef.get(Source.CACHE).addOnSuccessListener { value ->
             if (value == null || !value.exists()) {

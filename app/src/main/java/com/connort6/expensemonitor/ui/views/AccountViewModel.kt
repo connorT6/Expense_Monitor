@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.AccountRepo
+import com.connort6.expensemonitor.repo.SMSOperator
+import com.connort6.expensemonitor.repo.SMSOperatorRepo
+import com.connort6.expensemonitor.repo.SMSParser
 import com.connort6.expensemonitor.repo.TransactionType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +51,7 @@ class AccountViewModel : ViewModel(), IAccountViewModel {
     override val processingAccount = _processingAccount.asStateFlow()
 
     private val accountRepo = AccountRepo.getInstance()
+    private val smsOperatorRepo = SMSOperatorRepo.getInstance()
 
     init {
         viewModelScope.launch {
@@ -138,28 +142,19 @@ class AccountViewModel : ViewModel(), IAccountViewModel {
         transactionType: TransactionType
     ) {
         viewModelScope.launch {
-            accountRepo.getById(accountId)?.let { account ->
-//                val smsSenders = account.smsSenders.toMutableList()
-//                var smsOperator = smsSenders.find { it.address == address } ?: SMSOperator(
-//                    address = address
-//                )
-//
-//                smsSenders.removeIf { it.address == address }
-//                smsOperator = smsOperator.copy(
-//                    parsers = smsOperator.parsers.toMutableList() + SMSParser(
-//                        account.id,
-//                        parseRule,
-//                        transactionType
-//                    )
-//                )
-//                smsSenders.add(smsOperator)
-//                accountRepo.update(
-//                    account.copy(
-//                        smsSenders = smsSenders
-//                    )
-//                )
 
-                _processingAccount.value = null
+            val smsOperator =
+                smsOperatorRepo.findByAddress(address) ?: SMSOperator(address = address)
+
+            smsOperator.let { operator ->
+                val copy = operator.copy(
+                    parsers = operator.parsers + SMSParser(
+                        accountId,
+                        parseRule,
+                        transactionType
+                    )
+                )
+                smsOperatorRepo.saveOrUpdate(copy)
             }
         }
     }

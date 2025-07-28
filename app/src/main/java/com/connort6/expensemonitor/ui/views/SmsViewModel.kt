@@ -10,8 +10,8 @@ import android.provider.Telephony
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.connort6.expensemonitor.repo.AccountRepo
 import com.connort6.expensemonitor.repo.SMSOperator
+import com.connort6.expensemonitor.repo.SMSOperatorRepo
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.SmsRepo
 import kotlinx.coroutines.Dispatchers
@@ -70,12 +70,12 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
 
     private val smsRepo = SmsRepo.getInstance()
 
-    private val accountRepo = AccountRepo.getInstance()
+    private val smsOperatorRepo = SMSOperatorRepo.getInstance()
 
     init {
 //        loadAllSmsSenders()
         viewModelScope.launch {
-            accountRepo.allSmsSendersFlow.collect({
+            smsOperatorRepo.operators.collect({
                 _smsSenders.value = it
             })
         }
@@ -89,7 +89,7 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
             try {
                 var addresses: List<String> = allowedSenders
                 if (smsLoadMethod == SMSLoadMethod.BOUNDED_ONLY) {
-                    addresses = accountRepo.allSmsSendersFlow.value.map { it.address }
+                    addresses = smsOperatorRepo.operators.value.map { it.address }
                 }
                 val messageTask = async { readSmsFromProvider(addresses) }
                 val processedSmsDetails = async { smsRepo.smsDetails.value }

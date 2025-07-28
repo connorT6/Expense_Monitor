@@ -1,16 +1,18 @@
 package com.connort6.expensemonitor.repo
 
+import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.tasks.await
 
 
 interface BaseEntity {
-    val id: String
-    val lastUpdated: Timestamp?
+    var id: String
+    var lastUpdated: Timestamp?
     val deleted: Boolean
 }
 
@@ -20,19 +22,19 @@ open class MainRepository<T : BaseEntity>(
     private val sorting: ((List<T>) -> List<T>)? = null
 ) {
     protected val _allData = MutableStateFlow(listOf<T>())
+    protected open lateinit var collection: CollectionReference
 
-    fun loadAll(collection: CollectionReference) {
+    open fun loadAll() {
         collection.whereEqualTo(BaseEntity::deleted.name, false)
             .orderBy(BaseEntity::lastUpdated.name, Query.Direction.DESCENDING)
             .get(Source.CACHE)
             .addOnSuccessListener { snapshot ->
                 val sortByUpTime = snapshot.toObjects(clazz)
                 if (sortByUpTime.isEmpty()) {
-                    checkDataAvailable(collection)
+                    checkDataAvailable()
                     return@addOnSuccessListener
                 }
                 listenToChanges(
-                    collection,
                     getLastUpdated.invoke(sortByUpTime.first()) ?: Timestamp.now()
                 )
                 _allData.update {
@@ -41,30 +43,31 @@ open class MainRepository<T : BaseEntity>(
             }
     }
 
-    private fun checkDataAvailable(collection: CollectionReference) {
+    private fun checkDataAvailable() {
         collection.whereEqualTo(BaseEntity::deleted.name, false)
             .orderBy(BaseEntity::lastUpdated.name, Query.Direction.DESCENDING)
             .get(Source.SERVER)
-            .let { it ->
+            .let {
                 it.addOnSuccessListener { querySnapshot ->
                     val accountsOrderedUpTime =
                         querySnapshot.toObjects(clazz) // accounts orders by last updated time
                     if (accountsOrderedUpTime.isNotEmpty()) {
                         listenToChanges(
-                            collection,
                             getLastUpdated.invoke(accountsOrderedUpTime.first()) ?: Timestamp.now()
                         )
                         val sortedByDescending =
                             sorting?.invoke(accountsOrderedUpTime) ?: accountsOrderedUpTime
                         _allData.value = sortedByDescending
                     } else {
-                        listenToChanges(collection, Timestamp.now())
+                        listenToChanges(Timestamp.now())
                     }
+                }.addOnFailureListener { e ->
+                    Log.e("MainRepository", "checkDataAvailable: ", e)
                 }
             }
     }
 
-    private fun listenToChanges(collection: CollectionReference, timestamp: Timestamp) {
+    private fun listenToChanges(timestamp: Timestamp) {
         collection.whereGreaterThan(BaseEntity::lastUpdated.name, timestamp)
             .orderBy(BaseEntity::lastUpdated.name, Query.Direction.DESCENDING)
             .addSnapshotListener { value, error ->
@@ -87,10 +90,34 @@ open class MainRepository<T : BaseEntity>(
                 }
 
                 listenToChanges(
-                    collection,
                     getLastUpdated.invoke(sortByUpTime.first()) ?: Timestamp.now()
                 )
             }
+    }
+
+    suspend fun findAllByQuery(query: (CollectionReference) -> Query): List<T> {
+        val snapshot = query.invoke(collection).get(Source.CACHE).await()
+        return snapshot.toObjects(clazz)
+    }
+
+    suspend fun findByQuery(query: (CollectionReference) -> Query): T? {
+        val snapshot = query.invoke(collection).limit(1).get(Source.CACHE).await()
+        return snapshot.documents.firstOrNull()?.toObject(clazz)
+    }
+
+    open suspend fun findById(id: String): T? {
+        val snapshot = collection.document(id).get(Source.CACHE).await()
+        return snapshot.toObject(clazz)
+    }
+
+    suspend fun saveOrUpdate(entity: T) {
+        entity.lastUpdated = null
+        val document =
+            if (entity.id.isNotEmpty())
+                collection.document(entity.id)
+            else
+                collection.document()
+        document.set(entity).await()
     }
 
 }

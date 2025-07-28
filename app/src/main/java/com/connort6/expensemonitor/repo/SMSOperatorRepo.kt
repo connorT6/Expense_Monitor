@@ -2,14 +2,15 @@ package com.connort6.expensemonitor.repo
 
 import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp
 import kotlinx.coroutines.flow.asStateFlow
 
 data class SMSOperator(
-    override val id: String = "",
+    @DocumentId override var id: String = "",
     val address: String = "",
     val parsers: List<SMSParser> = listOf(),
-    @ServerTimestamp override val lastUpdated: Timestamp? = null,
+    @ServerTimestamp override var lastUpdated: Timestamp? = null,
     override val deleted: Boolean = false,
 ) : BaseEntity
 
@@ -29,17 +30,26 @@ class SMSOperatorRepo private constructor() : MainRepository<SMSOperator>(
     { list -> list.sortedBy { it.address } }
 ) {
     private val mainDocRef = mainCollection.document("smsOperator")
-    private val collection = mainDocRef.collection("operators")
+    override var collection = mainDocRef.collection("operators")
 
 
     val operators = _allData.asStateFlow()
+
+    companion object {
+        @Volatile
+        private var instance: SMSOperatorRepo? = null
+
+        fun getInstance(): SMSOperatorRepo = instance ?: synchronized(this) {
+            instance ?: SMSOperatorRepo().also { instance = it }
+        }
+    }
 
     init {
         loadAll()
     }
 
-    fun loadAll() {
-        super.loadAll(collection)
+    suspend fun findByAddress(address: String): SMSOperator? {
+        return findByQuery { it.whereEqualTo(SMSOperator::address.name, address) }
     }
 
 }
