@@ -3,6 +3,7 @@ package com.connort6.expensemonitor.ui.views
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -388,7 +389,10 @@ fun AddSMSOperatorsView(
     var keyState by remember { mutableStateOf(enumKeys) }
     var transactionType by remember { mutableStateOf(TransactionType.CREDIT) }
 
-    Dialog(onDismissRequest = onCancel, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
+    Dialog(
+        onDismissRequest = onCancel,
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
         Surface(
             shape = MaterialTheme.shapes.medium,
             tonalElevation = 8.dp
@@ -501,18 +505,23 @@ fun <T> DropdownTextField(
     labelProcessor: (T) -> String,
     modifier: Modifier = Modifier
 ) {
+
+
     var expanded by remember { mutableStateOf(false) }
-    var selectedOption by remember { mutableStateOf(options.first()) }
+    var selectedOption by remember { mutableStateOf(if (options.isEmpty()) null else options.first()) }
     var textFieldSize by remember { mutableStateOf(Size.Zero) }
 
     val icon = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown
 
+    val enabled = options.isNotEmpty()
+
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { expanded = it }
+        onExpandedChange = { if (enabled) expanded = it },
+        modifier = Modifier.focusable(enabled)
     ) {
         OutlinedTextField(
-            value = labelProcessor.invoke(selectedOption),
+            value = selectedOption?.let { labelProcessor.invoke(it) } ?: "",
             onValueChange = { }, // Empty to prevent typing
             modifier = modifier
                 .onGloballyPositioned { coordinates ->
@@ -521,11 +530,11 @@ fun <T> DropdownTextField(
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable), // Use default menuAnchor
             readOnly = true, // Prevents typing
             label = { Text("Select Option") },
+            enabled = enabled,
             trailingIcon = {
                 Icon(
                     icon,
-                    contentDescription = "Dropdown Icon",
-                    modifier = Modifier.clickable { expanded = true}
+                    contentDescription = "Dropdown Icon"
                 )
             }
         )
