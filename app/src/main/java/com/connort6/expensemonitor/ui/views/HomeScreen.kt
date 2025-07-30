@@ -73,11 +73,9 @@ import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
 data class AutoCompleteObj(val id: String, val name: String, val obj: Any? = null)
@@ -212,11 +210,26 @@ fun CreateTransactionView(
     val selectedAccount by homeScreenViewModel.selectedAccount.collectAsState()
     val selectedCategory by homeScreenViewModel.selectedCategory.collectAsState()
     val transactionAmount by homeScreenViewModel.transactionAmount.collectAsState()
+    val amountFocusRequester by remember { mutableStateOf(FocusRequester()) }
+    var amountFocused by remember { mutableStateOf(false) }
 
-    var amount by remember {
+
+    var amountFieldValue by remember {
         mutableStateOf(
-            transactionAmount.setScale(2, RoundingMode.HALF_UP).toPlainString()
+            TextFieldValue(
+                transactionAmount.setScale(
+                    2,
+                    RoundingMode.HALF_UP
+                ).toPlainString()
+            )
         )
+    }
+
+    LaunchedEffect(amountFocused) {
+        if (amountFocused) {
+            amountFieldValue =
+                amountFieldValue.copy(selection = TextRange(amountFieldValue.text.length, 0))
+        }
     }
 
     var showDatePicker by remember { mutableStateOf(false) }
@@ -326,13 +339,13 @@ fun CreateTransactionView(
                 Spacer(Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = amount,
-                    onValueChange = { typedValue ->
+                    value = amountFieldValue,
+                    onValueChange = { fieldValue ->
+                        val typedValue = fieldValue.text
                         // Allow up to 2 decimal places
                         val regex = Regex("^\\d+\\.?\\d{0,2}$")
                         if (typedValue.isEmpty() || regex.matches(typedValue)) {
-                            amount = typedValue
-//                            val amount = if (typedValue.isEmpty()) BigDecimal.ZERO else BigDecimal(typedValue)
+                            amountFieldValue = fieldValue
                             homeScreenViewModel.setTransactionAmount(
                                 if (typedValue.isEmpty()) BigDecimal.ZERO
                                 else BigDecimal(
@@ -344,12 +357,20 @@ fun CreateTransactionView(
                     label = {
                         Text("Amount")
                     },
-                    modifier = Modifier.onFocusChanged {
-                        if (!it.isFocused) {
-                            amount =
-                                transactionAmount.setScale(2, RoundingMode.HALF_UP).toPlainString()
-                        }
-                    },
+                    modifier = Modifier
+                        .focusRequester(amountFocusRequester)
+                        .onFocusChanged {
+                            amountFocused = it.isFocused
+                            if (it.isFocused) { // if all are 0 select highlight all text
+                                amountFocusRequester.freeFocus()
+                            } else {
+                                val amountText =
+                                    transactionAmount.setScale(2, RoundingMode.HALF_UP)
+                                        .toPlainString()
+                                amountFieldValue =
+                                    TextFieldValue(amountText)
+                            }
+                        },
                     keyboardOptions = KeyboardOptions.Default.copy(
                         keyboardType = KeyboardType.Number
                     )
