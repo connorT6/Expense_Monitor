@@ -110,7 +110,7 @@ open class MainRepository<T : BaseEntity>(
         return snapshot.toObject(clazz)
     }
 
-    suspend fun saveOrUpdate(entity: T) {
+    suspend fun saveOrUpdate(entity: T): T {
         entity.lastUpdated = null
         val document =
             if (entity.id.isNotEmpty())
@@ -118,6 +118,8 @@ open class MainRepository<T : BaseEntity>(
             else
                 collection.document()
         document.set(entity).await()
+        entity.id = document.id
+        return entity
     }
 
 }

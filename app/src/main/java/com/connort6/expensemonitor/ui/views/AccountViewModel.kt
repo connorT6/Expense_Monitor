@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.AccountRepo
-import com.connort6.expensemonitor.repo.SMSOperator
 import com.connort6.expensemonitor.repo.SMSOperatorRepo
 import com.connort6.expensemonitor.repo.SMSParser
+import com.connort6.expensemonitor.repo.SMSParserRepo
 import com.connort6.expensemonitor.repo.TransactionType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +52,7 @@ class AccountViewModel : ViewModel(), IAccountViewModel {
 
     private val accountRepo = AccountRepo.getInstance()
     private val smsOperatorRepo = SMSOperatorRepo.getInstance()
+    private val smsParserRepo = SMSParserRepo.getInstance()
 
     init {
         viewModelScope.launch {
@@ -143,19 +144,16 @@ class AccountViewModel : ViewModel(), IAccountViewModel {
     ) {
         viewModelScope.launch {
 
-            val smsOperator =
-                smsOperatorRepo.findByAddress(address) ?: SMSOperator(address = address)
+            val smsOperator = smsOperatorRepo.findOrCreateByAddress(address)
 
-            smsOperator.let { operator ->
-                val copy = operator.copy(
-                    parsers = operator.parsers + SMSParser(
-                        accountId,
-                        parseRule,
-                        transactionType
-                    )
+            smsParserRepo.saveOrUpdate(
+                SMSParser(
+                    smsOperatorId = smsOperator.id,
+                    accountId = accountId,
+                    pattern = parseRule,
+                    transactionType = transactionType
                 )
-                smsOperatorRepo.saveOrUpdate(copy)
-            }
+            )
         }
     }
 
