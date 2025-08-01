@@ -1,5 +1,6 @@
 package com.connort6.expensemonitor.ui.views
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,10 +25,7 @@ import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import com.google.firebase.Timestamp
-import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
-import java.util.Locale
 
 
 @Composable
@@ -43,7 +41,7 @@ fun TransactionList(transactions: List<Any>) {
             val item = transactions[index]
             when (item) {
                 is TransactionDayDetails -> DateItem(item.day)
-                is Transaction -> TransactionItem(item)
+                is Transaction -> TransactionItem(item, {})
             }
         }
     }
@@ -57,8 +55,10 @@ fun DateItem(day: String) {
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction) {
-    Box() {
+fun TransactionItem(transaction: Transaction, onclick: () -> Unit) {
+    Box(modifier = Modifier.clickable {
+        onclick.invoke()
+    }) {
         Row(
             modifier = Modifier
                 .padding(8.dp)
@@ -140,6 +140,6 @@ fun TrItemPreview() {
             transactionType = TransactionType.CREDIT,
             createdTime = Timestamp.now()
         )
-    )
+    ) {}
 
 }

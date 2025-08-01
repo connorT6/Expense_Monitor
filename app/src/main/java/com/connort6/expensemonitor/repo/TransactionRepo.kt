@@ -1,18 +1,12 @@
 package com.connort6.expensemonitor.repo
 
-import android.util.Log
 import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.Exclude
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ServerTimestamp
-import com.google.firebase.firestore.Source
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.tasks.await
 
 
@@ -25,14 +19,15 @@ data class Transaction(
     val swapAccountId: String? = null,
     val createdTime: Timestamp = Timestamp.now(),
     val smsId: String? = null,
-    @ServerTimestamp val lastUpdated: Timestamp? = null,
-    val deleted: Boolean = false,
+    @ServerTimestamp override var lastUpdated: Timestamp? = null,
+    override val deleted: Boolean = false,
     @get:Exclude
     var account: Account? = null,
     @get:Exclude
     var category: Category? = null,
-    var docId: String = ""
-) {
+    @DocumentId
+    override var id: String = ""
+) : BaseEntity {
 
     constructor() : this("", "", 0.0, TransactionType.DEBIT)
 
@@ -40,17 +35,17 @@ data class Transaction(
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
         other as Transaction
-        if (docId.isEmpty()) {
+        if (id.isEmpty()) {
             return lastUpdated == other.lastUpdated
         }
-        return docId == other.docId
+        return id == other.id
     }
 
     override fun hashCode(): Int {
-        if (docId.isEmpty()) {
+        if (id.isEmpty()) {
             return super.hashCode()
         }
-        return docId.hashCode()
+        return id.hashCode()
     }
 }
 
@@ -60,19 +55,22 @@ enum class TransactionType {
 }
 
 
-class TransactionRepo private constructor() {
+class TransactionRepo private constructor() : MainRepository<Transaction>(
+    Transaction::class.java,
+    { it.lastUpdated },
+    { list -> list.sortedByDescending { it.createdTime } }
+) {
 
     private val transactionDocRef = mainCollection.document("transaction")
-    private val collection = transactionDocRef.collection("transactions")
+    override var collection = transactionDocRef.collection("transactions")
 
-    private val _transactions = MutableStateFlow<List<Transaction>>(mutableListOf())
-    val transactions = _transactions.asStateFlow()
+    val transactions = _allData.asStateFlow()
 
     companion object {
         @Volatile
         private var instance: TransactionRepo? = null
-        fun getInstance(): TransactionRepo = TransactionRepo.instance ?: synchronized(this) {
-            TransactionRepo.instance ?: TransactionRepo().also { TransactionRepo.instance = it }
+        fun getInstance(): TransactionRepo = instance ?: synchronized(this) {
+            instance ?: TransactionRepo().also { instance = it }
         }
     }
 
@@ -81,49 +79,10 @@ class TransactionRepo private constructor() {
             if (!it.exists()) {
                 transactionDocRef.set(ProcessedSmsDetails()).addOnSuccessListener {}
             }
-            getAllTransactions()
+            loadAll()
         }
     }
 
-    private fun getAllTransactions() {
-        collection.whereEqualTo(Transaction::deleted.name, false)
-            .orderBy(Transaction::lastUpdated.name, Query.Direction.DESCENDING).get(Source.CACHE)
-            .addOnSuccessListener { snapshot ->
-                val sortByUpTime = snapshot.toObjects(Transaction::class.java)
-                if (sortByUpTime.isEmpty()) {
-                    checkDataAvailable()
-                    return@addOnSuccessListener
-                }
-                listenToChanges(sortByUpTime.first().lastUpdated ?: Timestamp.now())
-                _transactions.update {
-                    sortByUpTime.sortedByDescending { it.createdTime }
-                }
-            }
-    }
-
-    private fun checkDataAvailable() {
-        val snapshot =
-            collection.whereEqualTo(Transaction::deleted.name, false)
-                .orderBy(Transaction::lastUpdated.name, Query.Direction.DESCENDING).get(Source.SERVER)
-        snapshot.let { it ->
-            it.addOnSuccessListener { querySnapshot ->
-                val accountsOrderedUpTime =
-                    querySnapshot.toObjects(Transaction::class.java) // accounts orders by last updated time
-                if (accountsOrderedUpTime.isNotEmpty()) {
-                    listenToChanges(accountsOrderedUpTime.first().lastUpdated ?: Timestamp.now())
-                    val sortedByDescending = accountsOrderedUpTime.sortedByDescending { it.createdTime }
-                    _transactions.value = sortedByDescending
-                } else {
-                    listenToChanges(Timestamp.now())
-                }
-            }
-        }
-    }
-
-    suspend fun getByQuery(queryBuilder: (CollectionReference) -> Query): Set<Transaction> {
-        val query = queryBuilder(collection)
-        return query.get(Source.CACHE).await().toObjects(Transaction::class.java).toSet()
-    }
 
 
     fun saveTransactionTransactional(
@@ -131,7 +90,7 @@ class TransactionRepo private constructor() {
         tr: com.google.firebase.firestore.Transaction
     ) {
         val docRef = collection.document()
-        tr.set(docRef, transaction.copy(docId = docRef.id))
+        tr.set(docRef, transaction)
     }
 
     suspend fun createTransaction(transaction: Transaction) {
@@ -146,36 +105,12 @@ class TransactionRepo private constructor() {
         }
 
         val docRef = collection.document()
-        docRef.set(transaction.copy(docId = docRef.id)).await()
+        docRef.set(transaction).await()
     }
 
     suspend fun getDocRef(): DocumentReference {
         return collection.document()
     }
 
-    private fun listenToChanges(timestamp: Timestamp) {
-        collection.whereGreaterThan(Transaction::lastUpdated.name, timestamp)
-            .orderBy(Transaction::lastUpdated.name, Query.Direction.DESCENDING)
-            .addSnapshotListener { value, error ->
-                if (error != null) {
-                    return@addSnapshotListener
-                }
-                if (value == null) {
-                    return@addSnapshotListener
-                }
-                val sortByUpTime = value.toObjects(Transaction::class.java)
-                if (sortByUpTime.isEmpty()) {
-                    return@addSnapshotListener
-                }
-                val updatedIds = sortByUpTime.map { it.docId }
-
-                _transactions.update { transactions ->
-                    transactions.filter { it.docId !in updatedIds }
-                        .plus(sortByUpTime)
-                        .sortedByDescending { it.createdTime }
-                }
-
-            }
-    }
 
 }
