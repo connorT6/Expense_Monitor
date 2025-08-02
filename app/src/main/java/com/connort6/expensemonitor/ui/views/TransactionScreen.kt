@@ -25,25 +25,38 @@ import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import com.google.firebase.Timestamp
-import java.util.Date
 
 
 @Composable
 fun TransactionScreen(transactionsViewModel: TransactionsViewModel = viewModel()) {
-    val transactions by transactionsViewModel.transactions.collectAsState()
-    TransactionList(transactions)
+    TransactionList(transactionsViewModel)
 }
 
 @Composable
-fun TransactionList(transactions: List<Any>) {
+fun TransactionList(transactionsViewModel: ITransactionsViewModel) {
+    val transactions by transactionsViewModel.transactions.collectAsState()
+    val selectedTransaction by transactionsViewModel.selected.collectAsState()
+
+
     LazyColumn {
         items(transactions.size) { index ->
             val item = transactions[index]
             when (item) {
                 is TransactionDayDetails -> DateItem(item.day)
-                is Transaction -> TransactionItem(item, {})
+                is Transaction -> TransactionItem(
+                    item,
+                    { transactionsViewModel.selectTransaction(item) })
             }
         }
+    }
+
+    if (selectedTransaction != null) {
+        val homeScreenViewModel: HomeScreenViewModel = viewModel()
+        CreateTransactionView(
+            homeScreenViewModel,
+            { transactionsViewModel.clearSelection() },
+            selectedTransaction
+        )
     }
 }
 
@@ -89,42 +102,7 @@ fun TransactionItem(transaction: Transaction, onclick: () -> Unit) {
 fun ListPreview() {
     ExpenseMonitorTheme {
 
-        val list = listOf(
-            Transaction(
-                accountId = "account_1",
-                categoryId = "category_food",
-                amount = 50.0,
-                transactionType = TransactionType.DEBIT,
-                createdTime = Timestamp.now()
-            ),
-            Transaction(
-                accountId = "account_2",
-                categoryId = "category_transport",
-                amount = 25.50,
-                transactionType = TransactionType.DEBIT,
-                createdTime = Timestamp.now()
-            ),
-            Transaction(
-                accountId = "account_1",
-                categoryId = "category_salary",
-                amount = 2000.0,
-                transactionType = TransactionType.CREDIT,
-                createdTime = Timestamp.now()
-            ),
-            Transaction(
-                accountId = "account_3",
-                categoryId = "category_entertainment",
-                amount = 75.20,
-                transactionType = TransactionType.DEBIT,
-                createdTime = Timestamp(
-                    Date(
-                        System.currentTimeMillis() - 24 * 2 * 60 * 60 * 1000
-                    )
-                )
-            )
-        )
-
-        TransactionList(list)
+        TransactionList(MockTransactionsViewModel())
     }
 }
 

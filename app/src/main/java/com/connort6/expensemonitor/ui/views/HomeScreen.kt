@@ -68,6 +68,7 @@ import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.Category
+import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import java.math.BigDecimal
@@ -200,7 +201,8 @@ fun HomeScreen(
 @Composable
 fun CreateTransactionView(
     homeScreenViewModel: IHomeScreenViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    transactionToEdit: Transaction? = null
 ) {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
@@ -384,6 +386,20 @@ fun CreateTransactionView(
             }
         }
     }
+
+    if (transactionToEdit != null) {
+        homeScreenViewModel.selectAccount(transactionToEdit.account!!)
+        homeScreenViewModel.selectCategory(transactionToEdit.category!!)
+        val calendar = Calendar.getInstance()
+        calendar.time = transactionToEdit.createdTime.toDate()
+        homeScreenViewModel.selectDate(calendar)
+        homeScreenViewModel.selectTime(
+            transactionToEdit.createdTime.toDate().toInstant()
+                .atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+        )
+        homeScreenViewModel.setTransactionAmount(BigDecimal(transactionToEdit.amount))
+    }
+
 }
 
 @Composable
@@ -396,7 +412,11 @@ private fun DropDownOutlineTextField(
 ) {
     var text by remember { mutableStateOf(defaultText ?: "") }
     var expanded by remember { mutableStateOf(false) }
-    var fieldValue = TextFieldValue(text = text, selection = TextRange(text.length))
+    val fieldValue = TextFieldValue(text = text, selection = TextRange(text.length))
+
+    LaunchedEffect(defaultText) {
+        text = defaultText ?: ""
+    }
 
     val filteredSuggestions: List<AutoCompleteObj>
     if (text.isEmpty()) {
@@ -612,7 +632,7 @@ private fun HomePreview() {
 @Preview
 private fun TrPreview() {
     ExpenseMonitorTheme() {
-        CreateTransactionView(MockHomeScreenViewModel()) {}
+        CreateTransactionView(MockHomeScreenViewModel(), {})
     }
 }
 
@@ -654,7 +674,6 @@ private fun DatePickerPrev() {
 @Preview
 @Composable
 fun TimePickPrev() {
-    val timePickerState = rememberTimePickerState()
     ExpenseMonitorTheme {
         TimePickerDialog(MockHomeScreenViewModel(), LocalTime.now()) {}
     }
