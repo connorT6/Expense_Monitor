@@ -16,9 +16,7 @@ import com.connort6.expensemonitor.repo.SMSParserRepo
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.SmsRepo
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,7 +56,7 @@ interface ISmsViewModel {
     fun saveSmsMessage(smsMessage: SmsMessage)
     fun filterSmsByAccountId(accountId: String)
     fun setOpenType(openType: OpenType)
-    fun selectSmsMessage(smsMessage: SmsMessage)
+    fun selectSmsMessage(smsMessage: SmsMessage?)
 }
 
 
@@ -285,7 +283,7 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
         _openType.value = openType
     }
 
-    override fun selectSmsMessage(smsMessage: SmsMessage) {
+    override fun selectSmsMessage(smsMessage: SmsMessage?) {
         _selectedSmsMessage.value = smsMessage
     }
 }
@@ -368,61 +366,55 @@ class MockSmsViewModel : ISmsViewModel {
 
     // Mock implementations of the methods
     override fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String>) {
-//        _isLoading.value = true
-        // Simulate a delay
-        // In a real test, you might use TestCoroutineDispatcher here
-        GlobalScope.launch { // Use an appropriate scope for tests/previews
-            delay(500) // Simulate network delay
-            if (smsLoadMethod == SMSLoadMethod.ALL) {
-                _smsMessages.value = listOf(
+        if (smsLoadMethod == SMSLoadMethod.ALL) {
+            _smsMessages.value = listOf(
+                SmsMessage(
+                    "1",
+                    "Savings Bank",
+                    "All: Your account balance is $1,250.50",
+                    System.currentTimeMillis() - 100000,
+                    1
+                ),
+                SmsMessage(
+                    "2",
+                    "Credit Card Co.",
+                    "All: Alert: A transaction of $75.20 was made.",
+                    System.currentTimeMillis() - 200000,
+                    1
+                ),
+                SmsMessage(
+                    "3",
+                    "Mobile Carrier",
+                    "All: Your bill for $45.00 is due on 07/15.",
+                    System.currentTimeMillis() - 300000,
+                    1
+                )
+            )
+        } else { // BOUNDED_ONLY
+            _smsMessages.value = if (allowedSenders.isEmpty()) {
+                // Simulating BOUNDED_ONLY with current mock senders
+                listOf(
                     SmsMessage(
                         "1",
                         "Savings Bank",
-                        "All: Your account balance is $1,250.50",
+                        "Bounded: Your account balance is $1,250.50",
                         System.currentTimeMillis() - 100000,
                         1
                     ),
                     SmsMessage(
                         "2",
                         "Credit Card Co.",
-                        "All: Alert: A transaction of $75.20 was made.",
+                        "Bounded: Alert: A transaction of $75.20 was made.",
                         System.currentTimeMillis() - 200000,
-                        1
-                    ),
-                    SmsMessage(
-                        "3",
-                        "Mobile Carrier",
-                        "All: Your bill for $45.00 is due on 07/15.",
-                        System.currentTimeMillis() - 300000,
                         1
                     )
                 )
-            } else { // BOUNDED_ONLY
-                _smsMessages.value = if (allowedSenders.isEmpty()) {
-                    // Simulating BOUNDED_ONLY with current mock senders
-                    listOf(
-                        SmsMessage(
-                            "1",
-                            "Savings Bank",
-                            "Bounded: Your account balance is $1,250.50",
-                            System.currentTimeMillis() - 100000,
-                            1
-                        ),
-                        SmsMessage(
-                            "2",
-                            "Credit Card Co.",
-                            "Bounded: Alert: A transaction of $75.20 was made.",
-                            System.currentTimeMillis() - 200000,
-                            1
-                        )
-                    )
-                } else {
-                    // Filter based on allowedSenders for more specific mock behavior
-                    _smsMessages.value.filter { msg -> allowedSenders.contains(msg.address) }
-                }
+            } else {
+                // Filter based on allowedSenders for more specific mock behavior
+                _smsMessages.value.filter { msg -> allowedSenders.contains(msg.address) }
             }
-            _isLoading.value = false
         }
+        _isLoading.value = false
     }
 
     override fun clearError() {
@@ -445,7 +437,7 @@ class MockSmsViewModel : ISmsViewModel {
         _openType.value = openType
     }
 
-    override fun selectSmsMessage(smsMessage: SmsMessage) {
-        TODO("Not yet implemented")
+    override fun selectSmsMessage(smsMessage: SmsMessage?) {
+
     }
 }

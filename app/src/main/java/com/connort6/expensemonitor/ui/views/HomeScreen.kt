@@ -1,5 +1,6 @@
 package com.connort6.expensemonitor.ui.views
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -55,6 +56,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
@@ -74,6 +77,7 @@ import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.Category
+import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
@@ -96,7 +100,7 @@ fun HomeScreen(
 
     val accountTotal by homeScreenViewModel.accountTotal.collectAsState()
 
-    var showCreateTransaction by remember { mutableStateOf(false) }
+    val showCreateTransaction by homeScreenViewModel.showCreateTransaction.collectAsState()
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -151,7 +155,7 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
                     .fillMaxHeight()
                     .clickable {
-                        showCreateTransaction = true
+                        homeScreenViewModel.showCreateTransaction(true)
                         homeScreenViewModel.selectTransactionType(TransactionType.CREDIT)
                     }) {
                 Image(
@@ -166,7 +170,7 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
                     .fillMaxHeight()
                     .clickable {
-                        showCreateTransaction = true
+                        homeScreenViewModel.showCreateTransaction(true)
                         homeScreenViewModel.selectTransactionType(TransactionType.DEBIT)
                     }) {
                 Image(
@@ -182,7 +186,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxHeight()
                     .clickable {
-                        showCreateTransaction = true
+                        homeScreenViewModel.showCreateTransaction(true)
                         homeScreenViewModel.selectTransactionType(TransactionType.CREDIT)
                     }) {
                 Image(
@@ -199,7 +203,11 @@ fun HomeScreen(
     if (showCreateTransaction) {
         ShowTransactionView(
             homeScreenViewModel,
-            onDismiss = { showCreateTransaction = false },
+            onDismiss = {
+                homeScreenViewModel.showCreateTransaction(false)
+                smsViewModel.selectSmsMessage(null)
+            },
+            navigateToSms = { navController.navigate("smsReader") },
             smsViewModel = smsViewModel
         )
     }
@@ -220,10 +228,13 @@ fun ShowTransactionView(
         onDismiss,
         transactionToEdit,
         { accountId ->
-            smsViewModel.filterSmsByAccountId(accountId)
+            if (accountId?.isNotEmpty() ?: false) {
+                smsViewModel.filterSmsByAccountId(accountId)
+            }
             smsViewModel.setOpenType(OpenType.SELECTION)
             navigateToSms.invoke()
-        }
+        },
+        smsViewModel.selectedSmsMessage.collectAsState().value
     )
 }
 
@@ -233,7 +244,8 @@ private fun CreateTransactionView(
     homeScreenViewModel: IHomeScreenViewModel,
     onDismiss: () -> Unit,
     transactionToEdit: Transaction? = null,
-    openSMSView: (accountId: String) -> Unit
+    openSMSView: (accountId: String?) -> Unit,
+    selectedMessage: SmsMessage? = null
 ) {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
@@ -412,31 +424,44 @@ private fun CreateTransactionView(
                     )
                 )
 
-                Spacer(Modifier.height(18.dp))
+                if (selectedMessage != null) {
+                    Spacer(Modifier.height(12.dp))
 
-                Icon(
-                    Icons.Default.Mail, contentDescription = "",
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .scale(2f)
-                        .clickable(
-                            onClick = {
-                                selectedAccount?.id?.let {
-                                    if (it.isEmpty()) {
-                                        return@clickable
+                    OutlinedTextField(
+                        value = selectedMessage.body,
+                        onValueChange = { fieldValue ->
+                        },
+                        label = {
+                            Text("Message")
+                        },
+                        readOnly = true
+                    )
+
+
+                } else {
+                    Spacer(Modifier.height(18.dp))
+
+                    Icon(
+                        Icons.Default.Mail, contentDescription = "",
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .scale(2f)
+                            .clickable(
+                                onClick = {
+                                    selectedAccount?.id.let {
+                                        openSMSView.invoke(it)
                                     }
-                                    openSMSView.invoke(it)
-                                }
-                            },
-                            role = Role.Button,
-                            interactionSource = interactionSource,
-                            indication = ripple( // Use the new ripple from Material 3
-                                bounded = false,
-                                radius = 20.dp,
-                                color = Color.Unspecified // Optional: Or MaterialTheme.colorScheme.primary for example
-                            )// Adjust ripple radius if needed
-                        )
-                )
+                                },
+                                role = Role.Button,
+                                interactionSource = interactionSource,
+                                indication = ripple( // Use the new ripple from Material 3
+                                    bounded = false,
+                                    radius = 20.dp,
+                                    color = Color.Unspecified // Optional: Or MaterialTheme.colorScheme.primary for example
+                                )// Adjust ripple radius if needed
+                            )
+                    )
+                }
 
                 Spacer(Modifier.height(12.dp))
 
@@ -471,6 +496,16 @@ private fun DropDownOutlineTextField(
     focusRequester: FocusRequester? = null,
     defaultText: String? = null
 ) {
+
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Handle back press
+    BackHandler {
+        focusManager.clearFocus(true)
+        keyboardController?.hide()
+    }
+
     var text by remember { mutableStateOf(defaultText ?: "") }
     var expanded by remember { mutableStateOf(false) }
     val fieldValue = TextFieldValue(text = text, selection = TextRange(text.length))
@@ -685,8 +720,10 @@ private fun DropDownList(
 @Preview
 private fun HomePreview() {
     ExpenseMonitorTheme {
-        HomeScreen(rememberNavController(), MockHomeScreenViewModel(),
-            MockSmsViewModel())
+        HomeScreen(
+            rememberNavController(), MockHomeScreenViewModel(),
+            MockSmsViewModel()
+        )
     }
 }
 

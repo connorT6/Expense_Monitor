@@ -56,6 +56,9 @@ fun SmsReaderScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
+
+    smsViewModel.selectSmsMessage(null)
+
     // States from ViewModel
     val smsMessages by smsViewModel.smsMessages.collectAsStateWithLifecycle()
     val isLoading by smsViewModel.isLoading.collectAsStateWithLifecycle()

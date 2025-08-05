@@ -30,6 +30,8 @@ interface IHomeScreenViewModel {
     val selectedTransactionType: StateFlow<TransactionType>
     val transactionAmount: StateFlow<BigDecimal>
     val smsOperators: StateFlow<List<SMSOperator>>
+    val showCreateTransaction: StateFlow<Boolean>
+
     fun createTransaction()
     fun saveTransaction(transaction: Transaction)
     fun selectAccount(account: Account)
@@ -38,6 +40,7 @@ interface IHomeScreenViewModel {
     fun selectTransactionType(transactionType: TransactionType)
     fun selectTime(time: LocalTime)
     fun setTransactionAmount(amount: BigDecimal)
+    fun showCreateTransaction(show: Boolean)
 }
 
 class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
@@ -71,7 +74,8 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     override val smsOperators: StateFlow<List<SMSOperator>>
         get() = _smsOperators.asStateFlow()
 
-
+    override val showCreateTransaction: StateFlow<Boolean>
+        get() = _showCreateTransaction.asStateFlow()
     private val db = FirebaseFirestore.getInstance()
 
     private val accountRepo = AccountRepo.getInstance()
@@ -88,6 +92,8 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val _transactionType = MutableStateFlow(TransactionType.DEBIT)
     private val _transactionAmount = MutableStateFlow(BigDecimal.ZERO)
     private val _smsOperators = MutableStateFlow<List<SMSOperator>>(emptyList())
+
+    private val _showCreateTransaction = MutableStateFlow(false)
 
     init {
         viewModelScope.launch {
@@ -177,6 +183,10 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 
     override fun setTransactionAmount(amount: BigDecimal) {
         _transactionAmount.value = amount
+    }
+
+    override fun showCreateTransaction(show: Boolean) {
+        _showCreateTransaction.value = show
     }
 }
 
@@ -285,6 +295,11 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
             )
         ).asStateFlow()
 
+    override fun showCreateTransaction(show: Boolean) {
+    }
+
+    override val showCreateTransaction: StateFlow<Boolean>
+        get() = MutableStateFlow(false)
 
     // Add any other functions that your UI might call and need mock behavior for.
 }
