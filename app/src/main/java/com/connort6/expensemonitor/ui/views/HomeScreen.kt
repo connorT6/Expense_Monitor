@@ -2,6 +2,7 @@ package com.connort6.expensemonitor.ui.views
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,6 +40,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,10 +50,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
@@ -85,6 +91,7 @@ data class AutoCompleteObj(val id: String, val name: String, val obj: Any? = nul
 fun HomeScreen(
     navController: NavController,
     homeScreenViewModel: IHomeScreenViewModel,
+    smsViewModel: ISmsViewModel
 ) {
 
     val accountTotal by homeScreenViewModel.accountTotal.collectAsState()
@@ -190,19 +197,43 @@ fun HomeScreen(
     }
 
     if (showCreateTransaction) {
-        CreateTransactionView(
+        ShowTransactionView(
             homeScreenViewModel,
-            onDismiss = { showCreateTransaction = false }
+            onDismiss = { showCreateTransaction = false },
+            smsViewModel = smsViewModel
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateTransactionView(
+fun ShowTransactionView(
     homeScreenViewModel: IHomeScreenViewModel,
     onDismiss: () -> Unit,
-    transactionToEdit: Transaction? = null
+    transactionToEdit: Transaction? = null,
+    navigateToSms: () -> Unit = {},
+    smsViewModel: ISmsViewModel
+) {
+
+    //TODO close sms reader when selected
+    CreateTransactionView(
+        homeScreenViewModel,
+        onDismiss,
+        transactionToEdit,
+        { accountId ->
+            smsViewModel.filterSmsByAccountId(accountId)
+            smsViewModel.setOpenType(OpenType.SELECTION)
+            navigateToSms.invoke()
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CreateTransactionView(
+    homeScreenViewModel: IHomeScreenViewModel,
+    onDismiss: () -> Unit,
+    transactionToEdit: Transaction? = null,
+    openSMSView: (accountId: String) -> Unit
 ) {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
@@ -212,20 +243,14 @@ fun CreateTransactionView(
     val selectedAccount by homeScreenViewModel.selectedAccount.collectAsState()
     val selectedCategory by homeScreenViewModel.selectedCategory.collectAsState()
     val transactionAmount by homeScreenViewModel.transactionAmount.collectAsState()
+    val selectedDateState by homeScreenViewModel.selectedDate.collectAsState()
+    val selectedTimeState by homeScreenViewModel.selectedTime.collectAsState()
+    val smsOperators by homeScreenViewModel.smsOperators.collectAsState()
+
     val amountFocusRequester by remember { mutableStateOf(FocusRequester()) }
     var amountFocused by remember { mutableStateOf(false) }
 
-
-    var amountFieldValue by remember {
-        mutableStateOf(
-            TextFieldValue(
-                transactionAmount.setScale(
-                    2,
-                    RoundingMode.HALF_UP
-                ).toPlainString()
-            )
-        )
-    }
+    var amountFieldValue by remember { mutableStateOf(TextFieldValue()) }
 
     LaunchedEffect(amountFocused) {
         if (amountFocused) {
@@ -234,10 +259,18 @@ fun CreateTransactionView(
         }
     }
 
+    LaunchedEffect(transactionAmount) {
+        amountFieldValue = amountFieldValue.copy(
+            transactionAmount.setScale(
+                2,
+                RoundingMode.HALF_UP
+            ).toPlainString()
+        )
+    }
+
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
-    val selectedDateState by homeScreenViewModel.selectedDate.collectAsState()
 
     var selectedDate by remember { mutableStateOf(formatter.format(selectedDateState.time)) }
 
@@ -245,13 +278,14 @@ fun CreateTransactionView(
         selectedDate = formatter.format(selectedDateState.time)
     }
 
-    val selectedTimeState by homeScreenViewModel.selectedTime.collectAsState()
 
     var selectedTime by remember { mutableStateOf(timeFormatter.format(LocalTime.now())) }
 
     LaunchedEffect(selectedTimeState) {
         selectedTime = timeFormatter.format(selectedTimeState)
     }
+
+    val interactionSource = remember { MutableInteractionSource() }
 
     if (showDatePicker) {
         DatePickerPopUp(
@@ -377,6 +411,33 @@ fun CreateTransactionView(
                         keyboardType = KeyboardType.Number
                     )
                 )
+
+                Spacer(Modifier.height(18.dp))
+
+                Icon(
+                    Icons.Default.Mail, contentDescription = "",
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .scale(2f)
+                        .clickable(
+                            onClick = {
+                                selectedAccount?.id?.let {
+                                    if (it.isEmpty()) {
+                                        return@clickable
+                                    }
+                                    openSMSView.invoke(it)
+                                }
+                            },
+                            role = Role.Button,
+                            interactionSource = interactionSource,
+                            indication = ripple( // Use the new ripple from Material 3
+                                bounded = false,
+                                radius = 20.dp,
+                                color = Color.Unspecified // Optional: Or MaterialTheme.colorScheme.primary for example
+                            )// Adjust ripple radius if needed
+                        )
+                )
+
                 Spacer(Modifier.height(12.dp))
 
                 DialogBottomRow({
@@ -624,7 +685,8 @@ private fun DropDownList(
 @Preview
 private fun HomePreview() {
     ExpenseMonitorTheme {
-        HomeScreen(rememberNavController(), MockHomeScreenViewModel())
+        HomeScreen(rememberNavController(), MockHomeScreenViewModel(),
+            MockSmsViewModel())
     }
 }
 
@@ -632,7 +694,10 @@ private fun HomePreview() {
 @Preview
 private fun TrPreview() {
     ExpenseMonitorTheme() {
-        CreateTransactionView(MockHomeScreenViewModel(), {})
+        CreateTransactionView(
+            MockHomeScreenViewModel(), {}, null,
+            { }
+        )
     }
 }
 

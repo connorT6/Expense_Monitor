@@ -12,6 +12,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.SMSOperator
 import com.connort6.expensemonitor.repo.SMSOperatorRepo
+import com.connort6.expensemonitor.repo.SMSParserRepo
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.SmsRepo
 import kotlinx.coroutines.Dispatchers
@@ -38,17 +39,26 @@ enum class SMSLoadMethod {
     BOUNDED_ONLY
 }
 
+enum class OpenType {
+    GENERAL,
+    SELECTION
+}
+
 // ISmsViewModel.kt
 interface ISmsViewModel {
     val smsMessages: StateFlow<List<SmsMessage>>
     val smsSenders: StateFlow<List<SMSOperator>>
     val isLoading: StateFlow<Boolean>
     val error: StateFlow<String?>
+    val openType: StateFlow<OpenType>
+    val selectedSmsMessage: StateFlow<SmsMessage?>
 
     fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String> = emptyList())
     fun clearError()
     fun saveSmsMessage(smsMessage: SmsMessage)
-    // Add any other public methods from your SmsViewModel
+    fun filterSmsByAccountId(accountId: String)
+    fun setOpenType(openType: OpenType)
+    fun selectSmsMessage(smsMessage: SmsMessage)
 }
 
 
@@ -66,11 +76,17 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
     private val _error = MutableStateFlow<String?>(null)
     override val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _openType = MutableStateFlow(OpenType.GENERAL)
+    override val openType = _openType.asStateFlow()
+
+    private val _selectedSmsMessage = MutableStateFlow<SmsMessage?>(null)
+    override val selectedSmsMessage = _selectedSmsMessage.asStateFlow()
+
     private val contentResolver: ContentResolver = application.contentResolver
-
     private val smsRepo = SmsRepo.getInstance()
-
     private val smsOperatorRepo = SMSOperatorRepo.getInstance()
+    private val smsParserRepo = SMSParserRepo.getInstance()
+
 
     init {
 //        loadAllSmsSenders()
@@ -84,11 +100,10 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
     override fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String>) {
         viewModelScope.launch {
             _isLoading.value = true
-            delay(1500)
             _error.value = null
             try {
                 var addresses: List<String> = allowedSenders
-                if (smsLoadMethod == SMSLoadMethod.BOUNDED_ONLY) {
+                if (smsLoadMethod == SMSLoadMethod.ALL) {
                     addresses = smsOperatorRepo.operators.value.map { it.address }
                 }
                 val messageTask = async { readSmsFromProvider(addresses) }
@@ -184,9 +199,9 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
     }
 
     override fun saveSmsMessage(smsMessage: SmsMessage) {
-        viewModelScope.launch {
-            smsRepo.saveSms(smsMessage)
-        }
+//        viewModelScope.launch {
+//            smsRepo.saveSms(smsMessage)
+//        }
     }
 
     private fun loadAllSmsSenders() {
@@ -255,6 +270,24 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
         }
         return contactName
     }
+
+    override fun filterSmsByAccountId(accountId: String) {
+        viewModelScope.launch {
+            val smsParsers = smsParserRepo.findAllByAccountId(accountId)
+            val operatorIds = smsParsers.map { it.smsOperatorId }.toSet()
+            val filteredOperators = smsOperatorRepo.operators.value.filter { it.id in operatorIds }
+            _smsSenders.value = filteredOperators
+            loadSmsMessages(SMSLoadMethod.BOUNDED_ONLY, filteredOperators.map { it.address })
+        }
+    }
+
+    override fun setOpenType(openType: OpenType) {
+        _openType.value = openType
+    }
+
+    override fun selectSmsMessage(smsMessage: SmsMessage) {
+        _selectedSmsMessage.value = smsMessage
+    }
 }
 
 
@@ -280,6 +313,13 @@ class MockSmsViewModel : ISmsViewModel {
     override val error: StateFlow<String?> = _error.asStateFlow()
     // Or for non-interface version:
     // val error: StateFlow<String?> get() = _error.asStateFlow()
+
+    private val _openType = MutableStateFlow(OpenType.GENERAL)
+    override val openType = _openType.asStateFlow()
+
+    override val selectedSmsMessage: StateFlow<SmsMessage?>
+        get() = TODO("Not yet implemented")
+
 
     init {
         // Populate with sample data
@@ -397,5 +437,15 @@ class MockSmsViewModel : ISmsViewModel {
         _smsMessages.value = currentMessages
     }
 
-    // Add mock implementations for any other public methods from your ISmsViewModel/SmsViewModel
+    override fun filterSmsByAccountId(accountId: String) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setOpenType(openType: OpenType) {
+        _openType.value = openType
+    }
+
+    override fun selectSmsMessage(smsMessage: SmsMessage) {
+        TODO("Not yet implemented")
+    }
 }

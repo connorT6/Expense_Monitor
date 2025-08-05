@@ -41,6 +41,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import java.text.SimpleDateFormat
@@ -50,7 +52,8 @@ import java.util.Locale
 
 @Composable
 fun SmsReaderScreen(
-    smsViewModel: ISmsViewModel
+    smsViewModel: ISmsViewModel,
+    navController: NavController
 ) {
     val context = LocalContext.current
     // States from ViewModel
@@ -58,6 +61,7 @@ fun SmsReaderScreen(
     val isLoading by smsViewModel.isLoading.collectAsStateWithLifecycle()
     val error by smsViewModel.error.collectAsStateWithLifecycle()
     val smsSenders by smsViewModel.smsSenders.collectAsState()
+    val openType by smsViewModel.openType.collectAsState()
 
     var permissionGranted by remember {
         mutableStateOf(
@@ -82,7 +86,10 @@ fun SmsReaderScreen(
     // Effect to load messages if permission is already granted when screen enters
     LaunchedEffect(key1 = permissionGranted, key2 = allowedSenders) {
         if (permissionGranted) {
-            smsViewModel.loadSmsMessages(SMSLoadMethod.BOUNDED_ONLY)
+            smsViewModel.loadSmsMessages(
+                SMSLoadMethod.BOUNDED_ONLY,
+                smsSenders.map { it.address }
+            )
         }
     }
 
@@ -123,7 +130,12 @@ fun SmsReaderScreen(
                     MinimalDropdownMenu({ showSMSList = !showSMSList })
                 }
                 if (isLoading) {
-                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(), contentAlignment = Alignment.Center){
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator()
                     }
                 } else if (smsMessages.isEmpty()) {
@@ -135,7 +147,10 @@ fun SmsReaderScreen(
                                 smsMessages,
                                 key = { it.id }) { sms -> // Add a key for better performance
                                 SmsItemView(sms) {
-                                    smsViewModel.saveSmsMessage(it)
+                                    smsViewModel.selectSmsMessage(it)
+                                    if (openType == OpenType.SELECTION) {
+                                        navController.popBackStack()
+                                    }
                                 }
                                 HorizontalDivider()
                             }
@@ -224,7 +239,7 @@ fun MinimalDropdownMenu(showSenders: () -> Unit) {
 @Composable
 fun SmsReaderScreenPreview() {
     ExpenseMonitorTheme {
-        SmsReaderScreen(MockSmsViewModel())
+        SmsReaderScreen(MockSmsViewModel(), rememberNavController())
     }
 }
 

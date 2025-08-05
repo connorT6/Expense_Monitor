@@ -1,22 +1,22 @@
 package com.connort6.expensemonitor.ui.views
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.AccountRepo
 import com.connort6.expensemonitor.repo.Category
 import com.connort6.expensemonitor.repo.CategoryRepo
+import com.connort6.expensemonitor.repo.SMSOperator
 import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionRepo
 import com.connort6.expensemonitor.repo.TransactionType
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.time.LocalTime
-import java.math.BigDecimal
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.time.LocalTime
 import java.util.Calendar
 
 interface IHomeScreenViewModel {
@@ -29,6 +29,7 @@ interface IHomeScreenViewModel {
     val selectedTime: StateFlow<LocalTime>
     val selectedTransactionType: StateFlow<TransactionType>
     val transactionAmount: StateFlow<BigDecimal>
+    val smsOperators: StateFlow<List<SMSOperator>>
     fun createTransaction()
     fun saveTransaction(transaction: Transaction)
     fun selectAccount(account: Account)
@@ -67,6 +68,10 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     override val transactionAmount: StateFlow<BigDecimal>
         get() = _transactionAmount.asStateFlow()
 
+    override val smsOperators: StateFlow<List<SMSOperator>>
+        get() = _smsOperators.asStateFlow()
+
+
     private val db = FirebaseFirestore.getInstance()
 
     private val accountRepo = AccountRepo.getInstance()
@@ -82,6 +87,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val _selectedTime = MutableStateFlow(LocalTime.now())
     private val _transactionType = MutableStateFlow(TransactionType.DEBIT)
     private val _transactionAmount = MutableStateFlow(BigDecimal.ZERO)
+    private val _smsOperators = MutableStateFlow<List<SMSOperator>>(emptyList())
 
     init {
         viewModelScope.launch {
@@ -145,6 +151,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             _selectedDate.value = Calendar.getInstance()
             _selectedTime.value = LocalTime.now()
             _transactionAmount.value = BigDecimal.ZERO
+            _smsOperators.value = listOf()
         }
     }
 
@@ -269,6 +276,15 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
     override fun setTransactionAmount(amount: BigDecimal) {
         println("MockPreview: setTransactionAmount called with $amount")
     }
+
+    override val smsOperators: StateFlow<List<SMSOperator>> =
+        MutableStateFlow(
+            listOf(
+                SMSOperator(address = "8822"),
+                SMSOperator(address = "AAB")
+            )
+        ).asStateFlow()
+
 
     // Add any other functions that your UI might call and need mock behavior for.
 }

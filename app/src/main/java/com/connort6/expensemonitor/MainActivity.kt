@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
             ExpenseMonitorTheme {
                 val navController = rememberNavController()
                 val iconPickerViewModel: IconPickerViewModel = viewModel()
+                val smsViewModel: SmsViewModel = viewModel()
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
 
                     NavHost(
@@ -65,7 +66,7 @@ class MainActivity : ComponentActivity() {
                         composable("homeScreen") {
                             val homeScreenViewModel: HomeScreenViewModel = viewModel()
                             HomeScreen(
-                                navController, homeScreenViewModel,
+                                navController, homeScreenViewModel, smsViewModel
                             )
                         }
                         composable("categoryScreen") {
@@ -74,12 +75,12 @@ class MainActivity : ComponentActivity() {
                                 iconPickerViewModel = iconPickerViewModel
                             )
                         }
-                        composable("smsReader") {
-                            val smsViewModel: SmsViewModel = viewModel()
-                            SmsReaderScreen(smsViewModel)
+                        composable("smsReader") { backStackEntry ->
+
+                            SmsReaderScreen(smsViewModel, navController)
                         }
                         composable("transactionScreen") {
-                            TransactionScreen()
+                            TransactionScreen(navController, smsViewModel = smsViewModel)
                         }
                     }
                 }

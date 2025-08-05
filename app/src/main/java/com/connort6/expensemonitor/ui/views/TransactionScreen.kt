@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
@@ -28,15 +29,32 @@ import com.google.firebase.Timestamp
 
 
 @Composable
-fun TransactionScreen(transactionsViewModel: TransactionsViewModel = viewModel()) {
+fun TransactionScreen(
+    navController: NavController,
+    transactionsViewModel: TransactionsViewModel = viewModel(),
+    smsViewModel: ISmsViewModel
+) {
+    val selectedTransaction by transactionsViewModel.selected.collectAsState()
+
+
+    if (selectedTransaction != null) {
+        val homeScreenViewModel: HomeScreenViewModel = viewModel()
+        ShowTransactionView(
+            homeScreenViewModel,
+            { transactionsViewModel.clearSelection() },
+            selectedTransaction,
+            {navController.navigate("smsReader")},
+            smsViewModel
+        )
+    }
+
     TransactionList(transactionsViewModel)
+
 }
 
 @Composable
 fun TransactionList(transactionsViewModel: ITransactionsViewModel) {
     val transactions by transactionsViewModel.transactions.collectAsState()
-    val selectedTransaction by transactionsViewModel.selected.collectAsState()
-
 
     LazyColumn {
         items(transactions.size) { index ->
@@ -48,15 +66,6 @@ fun TransactionList(transactionsViewModel: ITransactionsViewModel) {
                     { transactionsViewModel.selectTransaction(item) })
             }
         }
-    }
-
-    if (selectedTransaction != null) {
-        val homeScreenViewModel: HomeScreenViewModel = viewModel()
-        CreateTransactionView(
-            homeScreenViewModel,
-            { transactionsViewModel.clearSelection() },
-            selectedTransaction
-        )
     }
 }
 
