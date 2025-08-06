@@ -11,6 +11,7 @@ import com.connort6.expensemonitor.repo.SMSOperatorRepo
 import com.connort6.expensemonitor.repo.SMSParser
 import com.connort6.expensemonitor.repo.SMSParserRepo
 import com.connort6.expensemonitor.repo.SmsMessage
+import com.connort6.expensemonitor.repo.SmsRepo
 import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionRepo
 import com.connort6.expensemonitor.repo.TransactionType
@@ -111,6 +112,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val transactionRepo = TransactionRepo.getInstance()
     private val smsOperatorRepo = SMSOperatorRepo.getInstance()
     private val smsParserRepo = SMSParserRepo.getInstance()
+    private val smsRepo = SmsRepo.getInstance()
 
     init {
         viewModelScope.launch {
@@ -150,12 +152,21 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             if (_selectedAccount.value == null || _selectedCategory.value == null) {
                 return@launch
             }
+
+            var savedSms: SmsMessage? = null
+
+            val value = _selectedSmsMessage.value
+            if (value != null) {
+                savedSms = smsRepo.saveOrUpdate(value)
+            }
+
             val transaction = Transaction(
                 _selectedAccount.value!!.id,
                 _selectedCategory.value!!.id,
                 _transactionAmount.value.toDouble(),
                 _transactionType.value,
-                createdTime = Timestamp(_selectedDate.value.time)
+                createdTime = Timestamp(_selectedDate.value.time),
+                smsId = savedSms?.id
                 //TODO update sms
             )
             var amount = _transactionAmount.value
