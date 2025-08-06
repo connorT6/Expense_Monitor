@@ -250,6 +250,8 @@ fun GeneratePieChart() {
             println("${it.label} Clicked")
             val pieIndex = data.indexOf(it)
             Toast.makeText(context, "${it.label} Clicked", Toast.LENGTH_SHORT).show()
+            data = data.mapIndexed { mapIndex, pie -> pie.copy(selected = pieIndex == mapIndex) }
+
         },
         selectedScale = 1.2f,
         scaleAnimEnterSpec = spring<Float>(
