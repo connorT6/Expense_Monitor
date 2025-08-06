@@ -260,7 +260,7 @@ private fun CreateTransactionView(
     val selectedCategory by homeScreenViewModel.selectedCategory.collectAsState()
     val transactionAmount by homeScreenViewModel.transactionAmount.collectAsState()
     val selectedDateState by homeScreenViewModel.selectedDate.collectAsState()
-    val selectedTimeState by homeScreenViewModel.selectedTime.collectAsState()
+    val selectedTimeState by homeScreenViewModel.selectedTime.collectAsState(LocalTime.now())
     val selectedMessage by homeScreenViewModel.selectedSmsMessage.collectAsState()
     val errorCode by homeScreenViewModel.errorCode.collectAsState()
     val amountFocusRequester by remember { mutableStateOf(FocusRequester()) }

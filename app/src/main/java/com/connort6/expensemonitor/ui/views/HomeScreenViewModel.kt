@@ -15,14 +15,16 @@ import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionRepo
 import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.util.SMSParserUtil
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.time.LocalTime
-import java.time.ZoneId
 import java.util.Calendar
 import java.util.Date
 
@@ -34,7 +36,7 @@ interface IHomeScreenViewModel {
     val selectedAccount: StateFlow<Account?>
     val selectedCategory: StateFlow<Category?>
     val selectedDate: StateFlow<Calendar>
-    val selectedTime: StateFlow<LocalTime>
+    val selectedTime: Flow<LocalTime>
     val selectedSmsMessage: StateFlow<SmsMessage?>
     val selectedTransactionType: StateFlow<TransactionType>
     val transactionAmount: StateFlow<BigDecimal>
@@ -78,9 +80,13 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 
     private val _selectedDate = MutableStateFlow(Calendar.getInstance())
     override val selectedDate = _selectedDate.asStateFlow()
-
-    private val _selectedTime = MutableStateFlow(LocalTime.now())
-    override val selectedTime = _selectedTime.asStateFlow()
+    override val selectedTime = selectedDate.map { calendar ->
+        LocalTime.of(
+            calendar.get(Calendar.HOUR_OF_DAY),
+            calendar.get(Calendar.MINUTE),
+            calendar.get(Calendar.SECOND)
+        )
+    }
 
     private val _transactionType = MutableStateFlow(TransactionType.DEBIT)
     override val selectedTransactionType = _transactionType.asStateFlow()
@@ -148,7 +154,9 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                 _selectedAccount.value!!.id,
                 _selectedCategory.value!!.id,
                 _transactionAmount.value.toDouble(),
-                _transactionType.value
+                _transactionType.value,
+                createdTime = Timestamp(_selectedDate.value.time)
+                //TODO update sms
             )
             var amount = _transactionAmount.value
             if (_transactionType.value == TransactionType.DEBIT) {
@@ -166,7 +174,6 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             _selectedAccount.value = null
             _selectedCategory.value = null
             _selectedDate.value = Calendar.getInstance()
-            _selectedTime.value = LocalTime.now()
             _transactionAmount.value = BigDecimal.ZERO
             _smsOperators.value = listOf()
             _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
@@ -186,7 +193,12 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     }
 
     override fun selectTime(time: LocalTime) {
-        _selectedTime.value = time
+        _selectedDate.value = _selectedDate.value.let { calendar ->
+            calendar.set(Calendar.HOUR_OF_DAY, time.hour)
+            calendar.set(Calendar.MINUTE, time.minute)
+            calendar.set(Calendar.SECOND, time.second)
+            calendar
+        }
     }
 
     override fun selectTransactionType(transactionType: TransactionType) {
@@ -237,8 +249,6 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                     val date = Date(selectedSms.date)
                     instance.time = date
                     _selectedDate.value = instance
-                    _selectedTime.value = date.toInstant()
-                        .atZone(ZoneId.systemDefault()).toLocalTime()
                     _transactionType.value = parser.transactionType
                     _transactionAmount.value = parsedData.amount
                     return@launch
