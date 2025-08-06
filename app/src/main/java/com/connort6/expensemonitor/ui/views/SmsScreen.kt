@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -147,8 +148,7 @@ fun SmsReaderScreen(
                     LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
                         if (showSMSList) {
                             items(
-                                smsMessages,
-                                key = { it.id }) { sms -> // Add a key for better performance
+                                smsMessages) { sms -> // Add a key for better performance
                                 SmsItemView(sms) {
                                     smsViewModel.selectSmsMessage(it)
                                     if (openType == OpenType.SELECTION) {
@@ -173,31 +173,39 @@ fun SmsReaderScreen(
 
 @Composable
 fun SmsItemView(sms: SmsMessage, onItemClick: (SmsMessage) -> Unit = {}) {
-    Column(
-        modifier = Modifier
-            .clickable {
-                onItemClick.invoke(sms)
-            }
-            .padding(vertical = 8.dp, horizontal = 8.dp)
-            .fillMaxWidth()
-    ) {
-        Text(
-            "From: ${sms.address}",
-            style = MaterialTheme.typography.titleMedium
+    Box {
+        Checkbox(
+            sms.processed,
+            onCheckedChange = {},
+            enabled = false,
+            modifier = Modifier.align(Alignment.TopEnd)
         )
-        Text(
-            "Date: ${
-                SimpleDateFormat(
-                    "dd/MM/yyyy HH:mm:ss",
-                    Locale.getDefault()
-                ).format(Date(sms.date))
-            }",
-            style = MaterialTheme.typography.bodySmall
-        )
-        Text(
-            sms.body,
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Column(
+            modifier = Modifier
+                .clickable {
+                    onItemClick.invoke(sms)
+                }
+                .padding(vertical = 8.dp, horizontal = 8.dp)
+                .fillMaxWidth()
+        ) {
+            Text(
+                "From: ${sms.address}",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                "Date: ${
+                    SimpleDateFormat(
+                        "dd/MM/yyyy HH:mm:ss",
+                        Locale.getDefault()
+                    ).format(Date(sms.date))
+                }",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                sms.body,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
     }
 }
 
@@ -251,6 +259,15 @@ fun SmsReaderScreenPreview() {
 fun DropDownPreview() {
     ExpenseMonitorTheme {
         MinimalDropdownMenu({})
+    }
+}
+
+@Preview
+@Composable
+fun SmsItemPreview() {
+    ExpenseMonitorTheme {
+        SmsItemView(SmsMessage("1", "2", "afeuib eywfwye uygwefv yuigfwsefc ujygfwesf", 4, 5))
+
     }
 }
 

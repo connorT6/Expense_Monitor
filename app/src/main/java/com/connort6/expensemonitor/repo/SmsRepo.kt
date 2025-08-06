@@ -13,18 +13,25 @@ data class ProcessedSmsDetails(
 
 data class SmsMessage(
     @DocumentId
-    override var id: String,
-    val address: String, // Sender's phone number
-    val body: String,
-    val date: Long,
-    val type: Int, // e.g., Telephony.Sms.MESSAGE_TYPE_INBOX
-    var docId: String = "",
+    override var id: String = "",
+    val smsId: String = "",
+    val address: String = "", // Sender's phone number
+    val body: String = "",
+    val date: Long = System.currentTimeMillis(),
+    val type: Int = 1, // e.g., Telephony.Sms.MESSAGE_TYPE_INBOX
     @ServerTimestamp override var lastUpdated: Timestamp? = null,
     @get:Exclude
     var processed: Boolean = false,
     override val deleted: Boolean = false
-
-) : BaseEntity
+) : BaseEntity {
+    constructor(
+        smsId: String,
+        address: String,
+        body: String,
+        date: Long,
+        type: Int
+    ) : this("", smsId, address, body, date, type)
+}
 
 class SmsRepo private constructor() :
     MainRepository<SmsMessage>(SmsMessage::class.java, { it.lastUpdated }) {

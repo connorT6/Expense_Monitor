@@ -16,7 +16,6 @@ import com.connort6.expensemonitor.repo.SMSParserRepo
 import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.SmsRepo
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -104,16 +103,12 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
                 if (smsLoadMethod == SMSLoadMethod.ALL) {
                     addresses = smsOperatorRepo.operators.value.map { it.address }
                 }
-                val messageTask = async { readSmsFromProvider(addresses) }
-                val processedSmsDetails = async { smsRepo.smsDetails.value }
-                val result = Pair(messageTask.await(), processedSmsDetails.await())
-                val messages = result.first.map { smsMessage ->
-                    result.second.smsIds.find { it == smsMessage.id }?.let {
-                        smsMessage.processed = true
-                        smsMessage
-                    } ?: smsMessage
-                }
-                _smsMessages.value = messages
+                _smsMessages.value = readSmsFromProvider(addresses)
+                    .map {
+                        val findByAddressAndDate = smsRepo.findByAddressAndDate(it.address, it.date)
+                        it.processed = findByAddressAndDate != null
+                        it
+                    }
             } catch (e: Exception) {
                 e.printStackTrace()
                 _error.value = "Failed to load SMS messages: ${e.message}"
@@ -291,8 +286,36 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
 
 class MockSmsViewModel : ISmsViewModel {
 
-    private val _smsMessages = MutableStateFlow<List<SmsMessage>>(emptyList())
-    override val smsMessages: StateFlow<List<SmsMessage>> = _smsMessages.asStateFlow()
+    override val smsMessages: StateFlow<List<SmsMessage>> = MutableStateFlow(listOf(
+        SmsMessage(
+            "1",
+            "Savings Bank",
+            "Your account balance is $1,250.50",
+            System.currentTimeMillis() - 100000,
+            1
+        ),
+        SmsMessage(
+            "2",
+            "Credit Card Co.",
+            "Alert: A transaction of $75.20 was made.",
+            System.currentTimeMillis() - 200000,
+            1
+        ),
+        SmsMessage(
+            "3",
+            "Mobile Carrier",
+            "Your bill for $45.00 is due on 07/15.",
+            System.currentTimeMillis() - 300000,
+            1
+        ),
+        SmsMessage(
+            "4",
+            "Utility Services",
+            "Reminder: Payment for electricity is $88.90.",
+            System.currentTimeMillis() - 400000,
+            1
+        )
+    )).asStateFlow()
     // Or for non-interface version:
     // val smsMessages: StateFlow<List<SmsMessage>> get() = _smsMessages.asStateFlow()
 
@@ -321,36 +344,6 @@ class MockSmsViewModel : ISmsViewModel {
 
     init {
         // Populate with sample data
-        _smsMessages.value = listOf(
-            SmsMessage(
-                "1",
-                "Savings Bank",
-                "Your account balance is $1,250.50",
-                System.currentTimeMillis() - 100000,
-                1
-            ),
-            SmsMessage(
-                "2",
-                "Credit Card Co.",
-                "Alert: A transaction of $75.20 was made.",
-                System.currentTimeMillis() - 200000,
-                1
-            ),
-            SmsMessage(
-                "3",
-                "Mobile Carrier",
-                "Your bill for $45.00 is due on 07/15.",
-                System.currentTimeMillis() - 300000,
-                1
-            ),
-            SmsMessage(
-                "4",
-                "Utility Services",
-                "Reminder: Payment for electricity is $88.90.",
-                System.currentTimeMillis() - 400000,
-                1
-            )
-        )
 
         _smsSenders.value = listOf(
             SMSOperator("Savings Bank"),
@@ -366,54 +359,6 @@ class MockSmsViewModel : ISmsViewModel {
 
     // Mock implementations of the methods
     override fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String>) {
-        if (smsLoadMethod == SMSLoadMethod.ALL) {
-            _smsMessages.value = listOf(
-                SmsMessage(
-                    "1",
-                    "Savings Bank",
-                    "All: Your account balance is $1,250.50",
-                    System.currentTimeMillis() - 100000,
-                    1
-                ),
-                SmsMessage(
-                    "2",
-                    "Credit Card Co.",
-                    "All: Alert: A transaction of $75.20 was made.",
-                    System.currentTimeMillis() - 200000,
-                    1
-                ),
-                SmsMessage(
-                    "3",
-                    "Mobile Carrier",
-                    "All: Your bill for $45.00 is due on 07/15.",
-                    System.currentTimeMillis() - 300000,
-                    1
-                )
-            )
-        } else { // BOUNDED_ONLY
-            _smsMessages.value = if (allowedSenders.isEmpty()) {
-                // Simulating BOUNDED_ONLY with current mock senders
-                listOf(
-                    SmsMessage(
-                        "1",
-                        "Savings Bank",
-                        "Bounded: Your account balance is $1,250.50",
-                        System.currentTimeMillis() - 100000,
-                        1
-                    ),
-                    SmsMessage(
-                        "2",
-                        "Credit Card Co.",
-                        "Bounded: Alert: A transaction of $75.20 was made.",
-                        System.currentTimeMillis() - 200000,
-                        1
-                    )
-                )
-            } else {
-                // Filter based on allowedSenders for more specific mock behavior
-                _smsMessages.value.filter { msg -> allowedSenders.contains(msg.address) }
-            }
-        }
         _isLoading.value = false
     }
 
@@ -422,15 +367,11 @@ class MockSmsViewModel : ISmsViewModel {
     }
 
     override fun saveSmsMessage(smsMessage: SmsMessage) {
-        // You could add the message to the list for testing, or just log
-        println("MockSmsViewModel: saveSmsMessage called with: $smsMessage")
-        val currentMessages = _smsMessages.value.toMutableList()
-        currentMessages.add(0, smsMessage) // Add to top for visibility
-        _smsMessages.value = currentMessages
+
     }
 
     override fun filterSmsByAccountId(accountId: String) {
-        TODO("Not yet implemented")
+
     }
 
     override fun setOpenType(openType: OpenType) {
