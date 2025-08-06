@@ -20,29 +20,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 data class PieChartData(
     val label: String,
     val value: Double,
+    val iconPainter: ImageBitmap,
     val color: Color,
     var selected: Boolean = false,
     var angle: Float = 0f,
     var startAngle: Float = 0f,
-    var scale: Animatable<Float, AnimationVector1D> = Animatable(1f)
+    var scale: Animatable<Float, AnimationVector1D> = Animatable(1f),
 ) {
     fun toggleSelection(selected: Boolean) {
         this.selected = selected
@@ -66,6 +73,8 @@ fun PieChart(pies: List<PieChartData>) {
     var pieList by remember {
         mutableStateOf(pies)
     }
+
+    val imageSize = Size(40f, 40f)
 
     LaunchedEffect(pies) {
         var totalSweep = 0f
@@ -151,25 +160,26 @@ fun PieChart(pies: List<PieChartData>) {
                 size = Size(radius * 2, radius * 2),
                 style = Stroke(width = strokeWidth)
             )
+
+            val xOffset = (radius + 150f) * cos(Math.toRadians(startAngle + pieData.angle / 2.0))
+            val yOffset = (radius + 150f) * sin(Math.toRadians(startAngle + pieData.angle / 2.0))
+            val imageOffset = Offset(
+                (center.x + xOffset).toFloat() - (imageSize.width / 2),
+                (center.y + yOffset).toFloat() - (imageSize.height / 2)
+            )
+
+            val intOffset = IntOffset(imageOffset.x.toInt(), imageOffset.y.toInt())
+
+            drawImage(
+                pieData.iconPainter, dstOffset = intOffset,
+                dstSize = IntSize(
+                    with(density) { imageSize.width.dp.toPx().toInt() },
+                    with(density) { imageSize.height.dp.toPx().toInt() }
+                )
+            )
             startAngle += pieData.angle
         }
 
-
-//        val pieRadius = canvasSize / 2
-//
-//        pieList.forEach { pieData ->
-//            val sweepAngle = pieData.getAngle() // Use pre-calculated angle
-//
-//            drawArc(
-//                color = pieData.color,
-//                startAngle = startAngle,
-//                sweepAngle = sweepAngle,
-//                useCenter = false,
-//                style = Stroke(width = strokeWidth)
-//            )
-//
-//            startAngle += sweepAngle
-//        }
     }
 }
 
@@ -225,10 +235,30 @@ fun PieChartPreview() {
     ExpenseMonitorTheme {
         PieChart(
             pies = listOf(
-                PieChartData("Label 1", 10.0, Color.Blue),
-                PieChartData("Label 2", 20.0, Color.Red),
-                PieChartData("Label 3", 30.0, Color.Green),
-                PieChartData("Label 4", 40.0, Color.Yellow)
+                PieChartData(
+                    "Label 1",
+                    10.0,
+                    ImageBitmap.imageResource(R.drawable.ic_fns),
+                    Color.Blue
+                ),
+                PieChartData(
+                    "Label 2",
+                    20.0,
+                    ImageBitmap.imageResource(R.drawable.ic_bank_card3),
+                    Color.Red
+                ),
+                PieChartData(
+                    "Label 3",
+                    30.0,
+                    ImageBitmap.imageResource(R.drawable.ic_accounts),
+                    Color.Green
+                ),
+                PieChartData(
+                    "Label 4",
+                    40.0,
+                    ImageBitmap.imageResource(R.drawable.ic_beaty),
+                    Color.Yellow
+                )
             )
         )
     }
