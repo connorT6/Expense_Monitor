@@ -434,7 +434,20 @@ private fun CreateTransactionView(
                         label = {
                             Text("Message")
                         },
-                        readOnly = true
+                        readOnly = true,
+                        maxLines = 5,
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                selectedAccount?.id.let {
+                                    openSMSView.invoke(it)
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Select date"
+                                )
+                            }
+                        }
                     )
 
 
@@ -733,7 +746,11 @@ private fun TrPreview() {
     ExpenseMonitorTheme() {
         CreateTransactionView(
             MockHomeScreenViewModel(), {}, null,
-            { }
+            { }, SmsMessage(
+                "asdfa", "8822",
+                "Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body",
+                1234567890, 1
+            )
         )
     }
 }
