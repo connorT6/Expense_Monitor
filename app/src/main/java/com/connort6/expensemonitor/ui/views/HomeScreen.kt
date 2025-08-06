@@ -1,10 +1,15 @@
 package com.connort6.expensemonitor.ui.views
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -56,6 +62,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -80,6 +87,8 @@ import com.connort6.expensemonitor.repo.Category
 import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
+import ir.ehsannarmani.compose_charts.PieChart
+import ir.ehsannarmani.compose_charts.models.Pie
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
@@ -106,7 +115,6 @@ fun HomeScreen(
     ) {
         Column(
             modifier = Modifier
-                .weight(1f)
                 .fillMaxWidth()
         ) {
             Row(
@@ -145,6 +153,16 @@ fun HomeScreen(
                 Text("SMS")
             }
         }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            GeneratePieChart()
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -210,6 +228,40 @@ fun HomeScreen(
             smsViewModel = smsViewModel
         )
     }
+}
+
+
+@Composable
+fun GeneratePieChart() {
+    var data by remember {
+        mutableStateOf(
+            listOf(
+                Pie(label = "Android", data = 4.0, color = Color.Green),
+                Pie(label = "Windows", data = 2.0, color = Color.Blue),
+                Pie(label = "Linux", data = 1.0, color = Color.Yellow),
+            )
+        )
+    }
+    val context = LocalContext.current
+    PieChart(
+        modifier = Modifier.size(200.dp),
+        data = data,
+        onPieClick = {
+            println("${it.label} Clicked")
+            val pieIndex = data.indexOf(it)
+            Toast.makeText(context, "${it.label} Clicked", Toast.LENGTH_SHORT).show()
+        },
+        selectedScale = 1.2f,
+        scaleAnimEnterSpec = spring<Float>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        colorAnimEnterSpec = tween(300),
+        colorAnimExitSpec = tween(300),
+        scaleAnimExitSpec = tween(300),
+        spaceDegreeAnimExitSpec = tween(300),
+        style = Pie.Style.Fill
+    )
 }
 
 @Composable
