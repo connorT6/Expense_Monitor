@@ -7,9 +7,14 @@ import com.connort6.expensemonitor.repo.AccountRepo
 import com.connort6.expensemonitor.repo.Category
 import com.connort6.expensemonitor.repo.CategoryRepo
 import com.connort6.expensemonitor.repo.SMSOperator
+import com.connort6.expensemonitor.repo.SMSOperatorRepo
+import com.connort6.expensemonitor.repo.SMSParser
+import com.connort6.expensemonitor.repo.SMSParserRepo
+import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionRepo
 import com.connort6.expensemonitor.repo.TransactionType
+import com.connort6.expensemonitor.util.SMSParserUtil
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +22,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.time.LocalTime
+import java.time.ZoneId
 import java.util.Calendar
+import java.util.Date
+
 
 interface IHomeScreenViewModel {
     val accounts: StateFlow<List<Account>>
@@ -27,10 +35,12 @@ interface IHomeScreenViewModel {
     val selectedCategory: StateFlow<Category?>
     val selectedDate: StateFlow<Calendar>
     val selectedTime: StateFlow<LocalTime>
+    val selectedSmsMessage: StateFlow<SmsMessage?>
     val selectedTransactionType: StateFlow<TransactionType>
     val transactionAmount: StateFlow<BigDecimal>
     val smsOperators: StateFlow<List<SMSOperator>>
     val showCreateTransaction: StateFlow<Boolean>
+    val errorCode: StateFlow<ErrorCodes>
 
     fun createTransaction()
     fun saveTransaction(transaction: Transaction)
@@ -41,59 +51,60 @@ interface IHomeScreenViewModel {
     fun selectTime(time: LocalTime)
     fun setTransactionAmount(amount: BigDecimal)
     fun showCreateTransaction(show: Boolean)
+    fun selectSmsMessage(selectedSms: SmsMessage?)
+
+    enum class ErrorCodes {
+        NONE,
+        MSG_NOT_PARSED
+    }
 }
 
 class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 
-    // Interface implementations
-    override val accounts: StateFlow<List<Account>>
-        get() = _accounts.asStateFlow()
-    override val categories: StateFlow<List<Category>>
-        get() = _categories.asStateFlow()
-    override val accountTotal: StateFlow<Account>
-        get() = _accountTotal.asStateFlow()
-
-    override val selectedAccount: StateFlow<Account?>
-        get() = _selectedAccount.asStateFlow()
-
-    override val selectedCategory: StateFlow<Category?>
-        get() = _selectedCategory.asStateFlow()
-
-    override val selectedDate: StateFlow<Calendar>
-        get() = _selectedDate.asStateFlow()
-
-    override val selectedTime: StateFlow<LocalTime>
-        get() = _selectedTime.asStateFlow()
-
-    override val selectedTransactionType: StateFlow<TransactionType>
-        get() = _transactionType.asStateFlow()
-
-    override val transactionAmount: StateFlow<BigDecimal>
-        get() = _transactionAmount.asStateFlow()
-
-    override val smsOperators: StateFlow<List<SMSOperator>>
-        get() = _smsOperators.asStateFlow()
-
-    override val showCreateTransaction: StateFlow<Boolean>
-        get() = _showCreateTransaction.asStateFlow()
-    private val db = FirebaseFirestore.getInstance()
-
-    private val accountRepo = AccountRepo.getInstance()
-    private val _accountTotal = MutableStateFlow(Account())
     private val _accounts = MutableStateFlow<List<Account>>(emptyList())
-    private val categoryRepo = CategoryRepo.getInstance()
-    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    override val accounts = _accounts.asStateFlow()
 
-    private val transactionRepo = TransactionRepo.getInstance()
+    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    override val categories = _categories.asStateFlow()
+
+    private val _accountTotal = MutableStateFlow(Account())
+    override val accountTotal = _accountTotal.asStateFlow()
+
     private val _selectedAccount = MutableStateFlow<Account?>(null)
+    override val selectedAccount = _selectedAccount.asStateFlow()
+
     private val _selectedCategory = MutableStateFlow<Category?>(null)
+    override val selectedCategory = _selectedCategory.asStateFlow()
+
     private val _selectedDate = MutableStateFlow(Calendar.getInstance())
+    override val selectedDate = _selectedDate.asStateFlow()
+
     private val _selectedTime = MutableStateFlow(LocalTime.now())
+    override val selectedTime = _selectedTime.asStateFlow()
+
     private val _transactionType = MutableStateFlow(TransactionType.DEBIT)
+    override val selectedTransactionType = _transactionType.asStateFlow()
+
     private val _transactionAmount = MutableStateFlow(BigDecimal.ZERO)
+    override val transactionAmount = _transactionAmount.asStateFlow()
+
     private val _smsOperators = MutableStateFlow<List<SMSOperator>>(emptyList())
+    override val smsOperators = _smsOperators.asStateFlow()
 
     private val _showCreateTransaction = MutableStateFlow(false)
+    override val showCreateTransaction = _showCreateTransaction.asStateFlow()
+
+    private val _selectedSmsMessage = MutableStateFlow<SmsMessage?>(null)
+    override val selectedSmsMessage = _selectedSmsMessage.asStateFlow()
+
+    private val _errorCode = MutableStateFlow(IHomeScreenViewModel.ErrorCodes.NONE)
+    override val errorCode = _errorCode.asStateFlow()
+    private val db = FirebaseFirestore.getInstance()
+    private val accountRepo = AccountRepo.getInstance()
+    private val categoryRepo = CategoryRepo.getInstance()
+    private val transactionRepo = TransactionRepo.getInstance()
+    private val smsOperatorRepo = SMSOperatorRepo.getInstance()
+    private val smsParserRepo = SMSParserRepo.getInstance()
 
     init {
         viewModelScope.launch {
@@ -158,6 +169,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             _selectedTime.value = LocalTime.now()
             _transactionAmount.value = BigDecimal.ZERO
             _smsOperators.value = listOf()
+            _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
         }
     }
 
@@ -187,6 +199,55 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 
     override fun showCreateTransaction(show: Boolean) {
         _showCreateTransaction.value = show
+    }
+
+    override fun selectSmsMessage(selectedSms: SmsMessage?) {
+        _selectedSmsMessage.value = selectedSms
+        if (selectedSms == null) {
+            return
+        }
+
+        viewModelScope.launch {
+            val selectedAccount = _selectedAccount.value
+            val smsOperator = smsOperatorRepo.findByAddress(selectedSms.address)
+            //TODO handle if not found
+            var smsParsers: List<SMSParser> = listOf()
+            if (smsOperator != null) {
+                if (selectedAccount != null) {
+                    smsParsers = smsParserRepo.findAllByOperatorIdAndAccountId(
+                        smsOperator.id,
+                        selectedAccount.id
+                    )
+                } else {
+                    smsParsers = smsParserRepo.findBySmsOperatorId(smsOperator.id)
+                }
+            }
+            if (smsParsers.isEmpty()) {
+                _errorCode.value = IHomeScreenViewModel.ErrorCodes.MSG_NOT_PARSED
+                return@launch
+            }
+
+            for (parser in smsParsers) {
+                val parsedData = SMSParserUtil.parseMessage(selectedSms, parser)
+                if (parsedData != null) {
+                    if (selectedAccount == null) {
+                        _selectedAccount.value = accountRepo.findById(parser.accountId)
+                    }
+                    val instance = Calendar.getInstance()
+                    val date = Date(selectedSms.date)
+                    instance.time = date
+                    _selectedDate.value = instance
+                    _selectedTime.value = date.toInstant()
+                        .atZone(ZoneId.systemDefault()).toLocalTime()
+                    _transactionType.value = parser.transactionType
+                    _transactionAmount.value = parsedData.amount
+                    return@launch
+                }
+            }
+
+            _errorCode.value = IHomeScreenViewModel.ErrorCodes.MSG_NOT_PARSED
+
+        }
     }
 }
 
@@ -300,6 +361,21 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
 
     override val showCreateTransaction: StateFlow<Boolean>
         get() = MutableStateFlow(false)
+    override val selectedSmsMessage: StateFlow<SmsMessage?>
+        get() = MutableStateFlow(
+            SmsMessage(
+                "asdfa", "8822",
+                "Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body",
+                1234567890, 1
+            )
+        ).asStateFlow()
+
+    override val errorCode: StateFlow<IHomeScreenViewModel.ErrorCodes>
+        get() = MutableStateFlow(IHomeScreenViewModel.ErrorCodes.NONE).asStateFlow()
+
+    override fun selectSmsMessage(selectedSms: SmsMessage?) {
+
+    }
 
     // Add any other functions that your UI might call and need mock behavior for.
 }

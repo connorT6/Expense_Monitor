@@ -77,7 +77,6 @@ import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.Category
-import com.connort6.expensemonitor.repo.SmsMessage
 import com.connort6.expensemonitor.repo.Transaction
 import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
@@ -222,6 +221,12 @@ fun ShowTransactionView(
     smsViewModel: ISmsViewModel
 ) {
 
+    val selectedSms by smsViewModel.selectedSmsMessage.collectAsState()
+
+    LaunchedEffect(selectedSms) {
+        homeScreenViewModel.selectSmsMessage(selectedSms)
+    }
+
     //TODO close sms reader when selected
     CreateTransactionView(
         homeScreenViewModel,
@@ -234,8 +239,8 @@ fun ShowTransactionView(
             smsViewModel.setOpenType(OpenType.SELECTION)
             navigateToSms.invoke()
         },
-        smsViewModel.selectedSmsMessage.collectAsState().value
-    )
+
+        )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -244,8 +249,7 @@ private fun CreateTransactionView(
     homeScreenViewModel: IHomeScreenViewModel,
     onDismiss: () -> Unit,
     transactionToEdit: Transaction? = null,
-    openSMSView: (accountId: String?) -> Unit,
-    selectedMessage: SmsMessage? = null
+    openSMSView: (accountId: String?) -> Unit
 ) {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
@@ -257,8 +261,8 @@ private fun CreateTransactionView(
     val transactionAmount by homeScreenViewModel.transactionAmount.collectAsState()
     val selectedDateState by homeScreenViewModel.selectedDate.collectAsState()
     val selectedTimeState by homeScreenViewModel.selectedTime.collectAsState()
-    val smsOperators by homeScreenViewModel.smsOperators.collectAsState()
-
+    val selectedMessage by homeScreenViewModel.selectedSmsMessage.collectAsState()
+    val errorCode by homeScreenViewModel.errorCode.collectAsState()
     val amountFocusRequester by remember { mutableStateOf(FocusRequester()) }
     var amountFocused by remember { mutableStateOf(false) }
 
@@ -428,7 +432,7 @@ private fun CreateTransactionView(
                     Spacer(Modifier.height(12.dp))
 
                     OutlinedTextField(
-                        value = selectedMessage.body,
+                        value = selectedMessage!!.body,
                         onValueChange = { fieldValue ->
                         },
                         label = {
@@ -445,6 +449,15 @@ private fun CreateTransactionView(
                                 Icon(
                                     imageVector = Icons.Default.Edit,
                                     contentDescription = "Select date"
+                                )
+                            }
+                        },
+                        supportingText = {
+                            if (errorCode == IHomeScreenViewModel.ErrorCodes.MSG_NOT_PARSED) {
+                                Text(
+                                    text = "Could not parse message!",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall // Optional padding for the error text
                                 )
                             }
                         }
@@ -746,11 +759,7 @@ private fun TrPreview() {
     ExpenseMonitorTheme() {
         CreateTransactionView(
             MockHomeScreenViewModel(), {}, null,
-            { }, SmsMessage(
-                "asdfa", "8822",
-                "Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body Test body",
-                1234567890, 1
-            )
+            { }
         )
     }
 }

@@ -91,4 +91,14 @@ class SMSParserRepo private constructor() :
         return findAllByQuery { it.whereEqualTo(SMSParser::accountId.name, accountId) }
     }
 
+    suspend fun findAllByOperatorIdAndAccountId(
+        smsOperatorId: String,
+        accountId: String
+    ): List<SMSParser> {
+        return findAllByQuery {
+            it.whereEqualTo(SMSParser::smsOperatorId.name, smsOperatorId)
+                .whereEqualTo(SMSParser::accountId.name, accountId)
+        }
+    }
+
 }
