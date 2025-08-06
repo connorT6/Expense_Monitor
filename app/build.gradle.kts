@@ -61,7 +61,7 @@ kotlin {
     jvmToolchain(11) // This sets the JDK version for compilation and the JVM target
 
     compilerOptions {
-        languageVersion.set(KotlinVersion.KOTLIN_2_0) // Or your desired Kotlin language version
+        languageVersion.set(KotlinVersion.KOTLIN_2_2) // Or your desired Kotlin language version
         // You can set other compiler options here if needed
         // For example:
         // freeCompilerArgs.add("-Xjsr305=strict")
