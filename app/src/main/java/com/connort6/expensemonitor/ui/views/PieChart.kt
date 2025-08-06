@@ -1,5 +1,6 @@
 package com.connort6.expensemonitor.ui.views
 
+import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
@@ -67,6 +68,7 @@ data class PieChartData(
 }
 
 
+//TODO convert all measurements to dp
 @Composable
 fun PieChart(pies: List<PieChartData>) {
     val totalValue = pies.sumOf { it.value }
@@ -161,11 +163,21 @@ fun PieChart(pies: List<PieChartData>) {
                 style = Stroke(width = strokeWidth)
             )
 
-            val xOffset = (radius + 150f) * cos(Math.toRadians(startAngle + pieData.angle / 2.0))
-            val yOffset = (radius + 150f) * sin(Math.toRadians(startAngle + pieData.angle / 2.0))
+            val middleAngle: Double = (startAngle + pieData.angle / 2).toDouble()
+            val radAngle = middleAngle / 180 * PI
+            val xOffset = (radius + 150f) * cos(radAngle)
+            val yOffset = (radius + 150f) * sin(radAngle)
             val imageOffset = Offset(
-                (center.x + xOffset).toFloat() - (imageSize.width / 2),
-                (center.y + yOffset).toFloat() - (imageSize.height / 2)
+                (center.x + xOffset).toFloat() - (with(density) { imageSize.width.dp.toPx().toInt() } / 2),
+                (center.y + yOffset).toFloat() - (with(density) { imageSize.height.dp.toPx().toInt() } / 2)
+            )
+
+            val offsetVal =
+                sqrt((center.x + xOffset).toFloat().pow(2) + (center.y + yOffset).toFloat().pow(2))
+
+            Log.e(
+                "TAG",
+                "PieChart: label : ${pieData.label}, radius: $radius, offset: $offsetVal, diff : ${offsetVal - radius}, x : $xOffset, y : $yOffset"
             )
 
             val intOffset = IntOffset(imageOffset.x.toInt(), imageOffset.y.toInt())
