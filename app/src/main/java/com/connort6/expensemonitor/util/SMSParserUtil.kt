@@ -47,7 +47,7 @@ class SMSParserUtil {
             val matchesForKey = mutableMapOf<SMSParseKeys, String>()
 
             captureGroupToKey.forEach { (index, key) ->
-                matchesForKey[key] = matches.groupValues[index]
+                matchesForKey[key] = matches.groupValues[index].replace(key.remove, "")
             }
 
             try {

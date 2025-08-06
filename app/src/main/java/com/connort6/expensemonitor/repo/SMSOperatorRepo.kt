@@ -23,8 +23,8 @@ data class SMSParser(
     override val deleted: Boolean = false,
 ) : BaseEntity
 
-enum class SMSParseKeys(val matchingRegex: String) {
-    AMOUNT("\\d+\\.\\d{2}");
+enum class SMSParseKeys(val matchingRegex: String, val remove: String) {
+    AMOUNT("[\\d,]+\\.\\d{2}", ",");
 }
 
 class SMSOperatorRepo private constructor() : MainRepository<SMSOperator>(
