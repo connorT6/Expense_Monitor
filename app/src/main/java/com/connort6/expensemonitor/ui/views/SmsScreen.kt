@@ -2,6 +2,7 @@ package com.connort6.expensemonitor.ui.views // Or your specific package
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -148,7 +149,8 @@ fun SmsReaderScreen(
                     LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
                         if (showSMSList) {
                             items(
-                                smsMessages) { sms -> // Add a key for better performance
+                                smsMessages
+                            ) { sms -> // Add a key for better performance
                                 SmsItemView(sms) {
                                     smsViewModel.selectSmsMessage(it)
                                     if (openType == OpenType.SELECTION) {
@@ -173,6 +175,7 @@ fun SmsReaderScreen(
 
 @Composable
 fun SmsItemView(sms: SmsMessage, onItemClick: (SmsMessage) -> Unit = {}) {
+    val context = LocalContext.current
     Box {
         Checkbox(
             sms.processed,
@@ -183,6 +186,10 @@ fun SmsItemView(sms: SmsMessage, onItemClick: (SmsMessage) -> Unit = {}) {
         Column(
             modifier = Modifier
                 .clickable {
+                    if (sms.processed) {
+                        Toast.makeText(context, "Already processed", Toast.LENGTH_SHORT).show()
+                        return@clickable
+                    }
                     onItemClick.invoke(sms)
                 }
                 .padding(vertical = 8.dp, horizontal = 8.dp)
