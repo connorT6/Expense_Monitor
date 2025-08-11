@@ -60,20 +60,19 @@ data class PieChartData(
 @Composable
 fun PieChart(pies: List<PieChartData>) {
     val totalValue = pies.sumOf { it.value }
+    var totalSweep = 0f
     var pieList by remember {
-        mutableStateOf(pies)
-    }
-
-    val imageSize = Size(50f, 50f)
-
-    LaunchedEffect(pies) {
-        var totalSweep = 0f
-        pieList = pies.map {
+        mutableStateOf(pies.mapIndexed {index, it ->
+            if (index == 0){
+                totalSweep = 0f;
+            }
             it.apply {
                 totalSweep = calcAngleTotalSweep(totalValue, totalSweep)
             }
-        }
+        })
     }
+
+    val imageSize = Size(50f, 50f)
 
     val strokeWidth = 30.dp
     var startAngle = 0f
