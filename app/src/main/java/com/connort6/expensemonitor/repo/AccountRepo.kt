@@ -175,7 +175,7 @@ class AccountRepo private constructor() : MainRepository<Account>(
         try {
             val docRef = collection.document(docId)
             val account = transaction.get(docRef).toObject(Account::class.java)
-            val mainAcc = transaction.get(accountRef).toObject(Account::class.java)
+            val mainAcc = getMainAcc(transaction)
             if (account == null || mainAcc == null) {
                 return null
             }
@@ -193,6 +193,9 @@ class AccountRepo private constructor() : MainRepository<Account>(
         }
         return null
     }
+
+    fun getMainAcc(transaction: Transaction): Account? =
+        transaction.get(accountRef).toObject(Account::class.java)
 
     suspend fun getById(id: String): Account? {
         val snapshot = collection.document(id).get(Source.CACHE).await()

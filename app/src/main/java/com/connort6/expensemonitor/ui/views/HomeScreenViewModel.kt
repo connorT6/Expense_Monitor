@@ -1,5 +1,6 @@
 package com.connort6.expensemonitor.ui.views
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.connort6.expensemonitor.repo.Account
@@ -18,6 +19,7 @@ import com.connort6.expensemonitor.repo.TransactionType
 import com.connort6.expensemonitor.util.SMSParserUtil
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +45,7 @@ interface IHomeScreenViewModel {
     val transactionAmount: StateFlow<BigDecimal>
     val smsOperators: StateFlow<List<SMSOperator>>
     val showCreateTransaction: StateFlow<Boolean>
+    val shouldModifyAccBal: StateFlow<Boolean>
     val errorCode: StateFlow<ErrorCodes>
 
     fun createTransaction()
@@ -55,6 +58,7 @@ interface IHomeScreenViewModel {
     fun setTransactionAmount(amount: BigDecimal)
     fun showCreateTransaction(show: Boolean)
     fun selectSmsMessage(selectedSms: SmsMessage?)
+    fun setAccBalModify(modify: Boolean)
 
     enum class ErrorCodes {
         NONE,
@@ -104,8 +108,12 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val _selectedSmsMessage = MutableStateFlow<SmsMessage?>(null)
     override val selectedSmsMessage = _selectedSmsMessage.asStateFlow()
 
+    private val _shouldModifyAccBal = MutableStateFlow(true)
+    override val shouldModifyAccBal = _shouldModifyAccBal.asStateFlow()
+
     private val _errorCode = MutableStateFlow(IHomeScreenViewModel.ErrorCodes.NONE)
     override val errorCode = _errorCode.asStateFlow()
+
     private val db = FirebaseFirestore.getInstance()
     private val accountRepo = AccountRepo.getInstance()
     private val categoryRepo = CategoryRepo.getInstance()
@@ -148,6 +156,8 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     }
 
     override fun createTransaction() {
+
+
         viewModelScope.launch {
             if (_selectedAccount.value == null || _selectedCategory.value == null) {
                 return@launch
@@ -169,18 +179,40 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                 smsId = savedSms?.id
                 //TODO update sms
             )
+
             var amount = _transactionAmount.value
             if (_transactionType.value == TransactionType.DEBIT) {
                 amount = amount.negate()
             }
-            db.runTransaction { tr ->
-                val updateAccountBalance = accountRepo.updateAccountBalance(
-                    amount.toDouble(),
-                    transaction.accountId,
-                    tr
-                )
+            try {
+                db.runTransaction { tr ->
+                    val accountById = accountRepo.findByIdTr(tr, transaction.accountId)
+                    val mainAcc = accountRepo.getMainAcc(tr)
 
-                transactionRepo.saveTransactionTransactional(transaction, tr)
+                    if (accountById == null || mainAcc == null) {
+                        throw FirebaseFirestoreException(
+                            "Account  not found",
+                            FirebaseFirestoreException.Code.ABORTED // Or FAILED_PRECONDITION
+                        )
+                    }
+
+                    if (_shouldModifyAccBal.value) {
+                        val mainBal = mainAcc.balance + amount.toDouble()
+                        accountRepo.saveOrUpdateTr(
+                            tr,
+                            accountById.copy(balance = accountById.balance + amount.toDouble())
+                        )
+                        accountRepo.saveOrUpdateTr(
+                            tr,
+                            mainAcc.copy(balance = mainBal)
+                        )
+                    }
+
+                    transactionRepo.saveOrUpdateTr(tr, transaction)
+                }
+            } catch (e: Exception) {
+                Log.e(HomeScreenViewModel::class.java.name, "createTransaction failed: ", e)
+                return@launch
             }
             _selectedAccount.value = null
             _selectedCategory.value = null
@@ -188,6 +220,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             _transactionAmount.value = BigDecimal.ZERO
             _smsOperators.value = listOf()
             _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
+            _shouldModifyAccBal.value = true
         }
     }
 
@@ -269,6 +302,10 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             _errorCode.value = IHomeScreenViewModel.ErrorCodes.MSG_NOT_PARSED
 
         }
+    }
+
+    override fun setAccBalModify(modify: Boolean) {
+        _shouldModifyAccBal.value = modify
     }
 }
 
@@ -391,10 +428,16 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
             )
         ).asStateFlow()
 
+    override val shouldModifyAccBal: StateFlow<Boolean>
+        get() = MutableStateFlow(false)
     override val errorCode: StateFlow<IHomeScreenViewModel.ErrorCodes>
         get() = MutableStateFlow(IHomeScreenViewModel.ErrorCodes.NONE).asStateFlow()
 
     override fun selectSmsMessage(selectedSms: SmsMessage?) {
+
+    }
+
+    override fun setAccBalModify(modify: Boolean) {
 
     }
 

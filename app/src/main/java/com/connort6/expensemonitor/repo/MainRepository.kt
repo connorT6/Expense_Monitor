@@ -4,7 +4,9 @@ import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.Transaction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.tasks.await
@@ -103,6 +105,21 @@ open class MainRepository<T : BaseEntity>(
     suspend fun findByQuery(query: (CollectionReference) -> Query): T? {
         val snapshot = query.invoke(collection).limit(1).get(Source.CACHE).await()
         return snapshot.documents.firstOrNull()?.toObject(clazz)
+    }
+
+    fun findByIdTr(transaction: Transaction, id: String): T? {
+        val reference = collection.document(id)
+        return transaction.get(reference).toObject(clazz)
+    }
+
+    fun saveOrUpdateTr(transaction: Transaction, entity: T) {
+        val document =
+            if (entity.id.isNotEmpty())
+                collection.document(entity.id)
+            else
+                collection.document()
+        entity.lastUpdated = null
+        transaction.set(document, entity, SetOptions.merge())
     }
 
     open suspend fun findById(id: String): T? {
