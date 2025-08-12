@@ -194,18 +194,18 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                     }
 
                     transactionRepo.saveOrUpdateTr(tr, transaction)
+                }.addOnSuccessListener {
+                    _selectedAccount.value = null
+                    _selectedCategory.value = null
+                    _selectedDate.value = Calendar.getInstance()
+                    _transactionAmount.value = BigDecimal.ZERO
+                    _smsOperators.value = listOf()
+                    _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
+                    _shouldModifyAccBal.value = true
                 }
             } catch (e: Exception) {
                 Log.e(HomeScreenViewModel::class.java.name, "createTransaction failed: ", e)
-                return@launch
             }
-            _selectedAccount.value = null
-            _selectedCategory.value = null
-            _selectedDate.value = Calendar.getInstance()
-            _transactionAmount.value = BigDecimal.ZERO
-            _smsOperators.value = listOf()
-            _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
-            _shouldModifyAccBal.value = true
         }
     }
 
