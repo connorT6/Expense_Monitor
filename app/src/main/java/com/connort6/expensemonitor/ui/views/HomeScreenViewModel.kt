@@ -35,7 +35,6 @@ import java.util.Date
 interface IHomeScreenViewModel {
     val accounts: StateFlow<List<Account>>
     val categories: StateFlow<List<Category>>
-    val accountTotal: StateFlow<Account>
     val selectedAccount: StateFlow<Account?>
     val selectedCategory: StateFlow<Category?>
     val selectedDate: StateFlow<Calendar>
@@ -74,8 +73,6 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     override val categories = _categories.asStateFlow()
 
-    private val _accountTotal = MutableStateFlow(Account())
-    override val accountTotal = _accountTotal.asStateFlow()
 
     private val _selectedAccount = MutableStateFlow<Account?>(null)
     override val selectedAccount = _selectedAccount.asStateFlow()
@@ -124,11 +121,6 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 
     init {
         viewModelScope.launch {
-            accountRepo.mainAccount.collect {
-                _accountTotal.value = it
-            }
-        }
-        viewModelScope.launch {
             accountRepo.accountFlow.collect {
                 _accounts.value = it.toList()
             }
@@ -156,7 +148,6 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     }
 
     override fun createTransaction() {
-
 
         viewModelScope.launch {
             if (_selectedAccount.value == null || _selectedCategory.value == null) {
@@ -187,9 +178,8 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             try {
                 db.runTransaction { tr ->
                     val accountById = accountRepo.findByIdTr(tr, transaction.accountId)
-                    val mainAcc = accountRepo.getMainAcc(tr)
 
-                    if (accountById == null || mainAcc == null) {
+                    if (accountById == null) {
                         throw FirebaseFirestoreException(
                             "Account  not found",
                             FirebaseFirestoreException.Code.ABORTED // Or FAILED_PRECONDITION
@@ -197,14 +187,9 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                     }
 
                     if (_shouldModifyAccBal.value) {
-                        val mainBal = mainAcc.balance + amount.toDouble()
                         accountRepo.saveOrUpdateTr(
                             tr,
                             accountById.copy(balance = accountById.balance + amount.toDouble())
-                        )
-                        accountRepo.updateMainAcc(
-                            tr,
-                            mainAcc.copy(balance = mainBal)
                         )
                     }
 
@@ -311,17 +296,6 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
 
 
 class MockHomeScreenViewModel : IHomeScreenViewModel {
-
-    // Override properties from HomeScreenViewModel
-    override val accountTotal: StateFlow<Account> =
-        MutableStateFlow(
-            Account(
-                id = "total",
-                name = "Total Balance",
-                balance = 1500.75
-            ) // Use your Account data class
-        )
-            .asStateFlow()
 
     override val accounts: StateFlow<List<Account>> = MutableStateFlow<List<Account>>(
         listOf(

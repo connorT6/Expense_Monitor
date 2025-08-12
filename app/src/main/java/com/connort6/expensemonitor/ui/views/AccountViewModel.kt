@@ -16,7 +16,6 @@ import kotlinx.coroutines.launch
 
 data class AccountData(
     val accounts: List<Account> = emptyList(),
-    val mainAccount: Account = Account()
 )
 
 interface IAccountViewModel {
@@ -59,14 +58,6 @@ class AccountViewModel : ViewModel(), IAccountViewModel {
             accountRepo.accountFlow.collect { accounts ->
                 _accountsState.update { state ->
                     state.copy(accounts = accounts.toList())
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            accountRepo.mainAccount.collect { mainAcc ->
-                _accountsState.update { state ->
-                    state.copy(mainAccount = mainAcc)
                 }
             }
         }
@@ -130,7 +121,7 @@ class AccountViewModel : ViewModel(), IAccountViewModel {
 
     override fun setSelectedAcc(account: Account) {
         viewModelScope.launch {
-            accountRepo.getById(account.id).let {
+            accountRepo.findById(account.id).let {
                 _processingAccount.value = it
             }
         }
@@ -222,7 +213,6 @@ class MockAccountViewModel : IAccountViewModel {
 
         _accountsState.value = AccountData(
             accounts = sampleAccounts.toList(),
-            mainAccount = account1 // Let's say Cash is the main account initially
         )
     }
 
@@ -247,14 +237,6 @@ class MockAccountViewModel : IAccountViewModel {
 
     override fun deleteAccount(accId: String) {
         sampleAccounts.removeIf { it.id == accId }
-        _accountsState.update {
-            val newMain = if (it.mainAccount.id == accId) sampleAccounts.firstOrNull()
-                ?: Account() else it.mainAccount
-            it.copy(
-                accounts = sampleAccounts.toList(),
-                mainAccount = newMain
-            )
-        }
         println("MockAccountViewModel: deleteAccount called for ID: $accId")
     }
 

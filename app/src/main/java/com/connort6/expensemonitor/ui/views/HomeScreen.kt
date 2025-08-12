@@ -101,9 +101,17 @@ fun HomeScreen(
     smsViewModel: ISmsViewModel
 ) {
 
-    val accountTotal by homeScreenViewModel.accountTotal.collectAsState()
-
+    val accounts by homeScreenViewModel.accounts.collectAsState()
+    var accountTotal by remember { mutableStateOf(0.0) }
     val showCreateTransaction by homeScreenViewModel.showCreateTransaction.collectAsState()
+
+    LaunchedEffect(accounts) {
+        accountTotal = if (accounts.isEmpty()) {
+            0.0
+        } else {
+            accounts.map { it.balance }.reduce { sum, bal -> bal + sum }
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -121,7 +129,7 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "LKR ${"%.2f".format(accountTotal.balance)}",
+                    text = "LKR ${"%.2f".format(accountTotal)}",
                     fontSize = 20.sp,
                     modifier = Modifier.weight(1f)
                 )

@@ -45,7 +45,7 @@ class TransactionsViewModel : ViewModel(), ITransactionsViewModel {
                 _transactions.value = transactions
                     .map { transaction ->
                         transaction.copy(
-                            account = accountRepo.getById(transaction.accountId),
+                            account = accountRepo.findById(transaction.accountId),
                             category = categoryRepo.getById(transaction.categoryId)
                         )
                     }

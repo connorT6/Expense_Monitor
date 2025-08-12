@@ -88,6 +88,7 @@ fun AccountScreen(
     val addOrEditData by accountViewModel.addOrEditData.collectAsState()
     val pickerResult by iconPickerViewModel.pickerResult.collectAsState()
     var showAddSms by remember { mutableStateOf(false) }
+    var accountsTotal by remember { mutableStateOf(0.0) }
 
     LaunchedEffect(pickerResult) {
         pickerResult.takeIf { it.selected }?.let {
@@ -98,8 +99,19 @@ fun AccountScreen(
         }
     }
 
+    LaunchedEffect(accountState) {
+        accountState.let {
+            if (accountState.accounts.isEmpty()) {
+                accountsTotal = 0.0
+            } else {
+                accountsTotal =
+                    accountState.accounts.map { it.balance }.reduce { sum, bal -> sum + bal }
+            }
+        }
+    }
+
     AccountsView(
-        accountState, {
+        accountState, accountsTotal, {
             //TODO show add acc
             accountViewModel.showAddAcc(true)
 //            accountViewModel.addAccount(account)
@@ -140,6 +152,7 @@ fun AccountScreen(
 @Composable
 private fun AccountsView(
     accountState: AccountData,
+    accountsTotal: Double,
     addAcc: () -> Unit,
     delAcc: (String) -> Unit,
     addSMS: (Account) -> Unit
@@ -152,7 +165,7 @@ private fun AccountsView(
         ) {
 
             Text(
-                "LKR ${"%.2f".format(accountState.mainAccount.balance)}",
+                "LKR ${"%.2f".format(accountsTotal)}",
                 modifier = Modifier.weight(1f)
             )
 
@@ -296,7 +309,8 @@ fun AddOrEditAccount(
                     OutlinedTextField(
                         value = balance,
                         onValueChange = { typedValue ->
-                            if (typedValue.all { it.isDigit() }) {
+                            val regex = Regex("^\\d+\\.?\\d{0,2}$")
+                            if (typedValue.isEmpty() || regex.matches(typedValue)) {
                                 onBalanceEdit.invoke(typedValue)
                             }
                         },
@@ -617,7 +631,7 @@ private fun PreviewAcc() {
     val fakeState = AccountData(accounts = fakeAccounts)
 
     ExpenseMonitorTheme {
-        AccountsView(fakeState, {}, {}, {})
+        AccountsView(fakeState, 15474.12, {}, {}, {})
     }
 
 }
