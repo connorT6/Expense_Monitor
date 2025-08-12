@@ -202,7 +202,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                             tr,
                             accountById.copy(balance = accountById.balance + amount.toDouble())
                         )
-                        accountRepo.saveOrUpdateTr(
+                        accountRepo.updateMainAcc(
                             tr,
                             mainAcc.copy(balance = mainBal)
                         )

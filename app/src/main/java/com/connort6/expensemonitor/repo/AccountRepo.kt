@@ -197,6 +197,11 @@ class AccountRepo private constructor() : MainRepository<Account>(
     fun getMainAcc(transaction: Transaction): Account? =
         transaction.get(accountRef).toObject(Account::class.java)
 
+    fun updateMainAcc(transaction: Transaction, account: Account) {
+        val copy = account.copy(lastUpdated = null)
+        transaction.set(accountRef, copy, SetOptions.merge())
+    }
+
     suspend fun getById(id: String): Account? {
         val snapshot = collection.document(id).get(Source.CACHE).await()
         return snapshot.toObject(Account::class.java)
