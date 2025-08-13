@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.connort6.expensemonitor.repo.SmsMessage
@@ -58,8 +59,13 @@ fun SmsReaderScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
+    var selectedSms by remember { mutableStateOf<SmsMessage?>(null) }
 
-    smsViewModel.selectSmsMessage(null)
+    LaunchedEffect(selectedSms) {
+        if (selectedSms == null) {
+            smsViewModel.selectSmsMessage(null)
+        }
+    }
 
     // States from ViewModel
     val smsMessages by smsViewModel.smsMessages.collectAsStateWithLifecycle()
@@ -67,6 +73,7 @@ fun SmsReaderScreen(
     val error by smsViewModel.error.collectAsStateWithLifecycle()
     val smsSenders by smsViewModel.smsSenders.collectAsState()
     val openType by smsViewModel.openType.collectAsState()
+    var showTransaction by remember { mutableStateOf(false) }
 
     var permissionGranted by remember {
         mutableStateOf(
@@ -155,8 +162,8 @@ fun SmsReaderScreen(
                                     smsViewModel.selectSmsMessage(it)
                                     if (openType == OpenType.SELECTION) {
                                         navController.popBackStack()
-                                    }else if (openType == OpenType.GENERAL){
-                                        //TODO open transaction view
+                                    } else if (openType == OpenType.GENERAL) {
+                                        showTransaction = true
                                     }
                                 }
                                 HorizontalDivider()
@@ -171,6 +178,14 @@ fun SmsReaderScreen(
                 }
             }
         }
+    }
+
+    if (showTransaction) {
+        val homeScreenViewModel: HomeScreenViewModel = viewModel()
+        ShowTransactionView(
+            homeScreenViewModel, smsViewModel, { showTransaction = false },
+            { showTransaction = false }
+        )
     }
 }
 

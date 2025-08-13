@@ -224,12 +224,12 @@ fun HomeScreen(
     if (showCreateTransaction) {
         ShowTransactionView(
             homeScreenViewModel,
+            smsViewModel = smsViewModel,
             onDismiss = {
                 homeScreenViewModel.showCreateTransaction(false)
                 smsViewModel.selectSmsMessage(null)
             },
-            navigateToSms = { navController.navigate("smsReader") },
-            smsViewModel = smsViewModel
+            navigateToSms = { navController.navigate("smsReader") }
         )
     }
 }
@@ -270,10 +270,10 @@ fun GeneratePieChart() {
 @Composable
 fun ShowTransactionView(
     homeScreenViewModel: IHomeScreenViewModel,
+    smsViewModel: ISmsViewModel,
     onDismiss: () -> Unit,
-    transactionToEdit: Transaction? = null,
     navigateToSms: () -> Unit = {},
-    smsViewModel: ISmsViewModel
+    transactionToEdit: Transaction? = null
 ) {
 
     val selectedSms by smsViewModel.selectedSmsMessage.collectAsState()

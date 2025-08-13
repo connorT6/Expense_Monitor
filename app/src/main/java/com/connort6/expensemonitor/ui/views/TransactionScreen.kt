@@ -41,10 +41,10 @@ fun TransactionScreen(
         val homeScreenViewModel: HomeScreenViewModel = viewModel()
         ShowTransactionView(
             homeScreenViewModel,
+            smsViewModel,
             { transactionsViewModel.clearSelection() },
-            selectedTransaction,
             {navController.navigate("smsReader")},
-            smsViewModel
+            selectedTransaction
         )
     }
 
