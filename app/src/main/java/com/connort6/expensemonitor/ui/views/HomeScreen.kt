@@ -151,6 +151,7 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(8.dp))
             Button({
+                smsViewModel.setOpenType(OpenType.GENERAL)
                 navController.navigate("smsReader")
             }) {
                 Text("SMS")

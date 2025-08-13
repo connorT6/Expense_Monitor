@@ -155,6 +155,8 @@ fun SmsReaderScreen(
                                     smsViewModel.selectSmsMessage(it)
                                     if (openType == OpenType.SELECTION) {
                                         navController.popBackStack()
+                                    }else if (openType == OpenType.GENERAL){
+                                        //TODO open transaction view
                                     }
                                 }
                                 HorizontalDivider()
