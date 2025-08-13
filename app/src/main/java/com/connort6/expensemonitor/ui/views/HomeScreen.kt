@@ -292,9 +292,7 @@ fun ShowTransactionView(
             }
             smsViewModel.setOpenType(OpenType.SELECTION)
             navigateToSms.invoke()
-        },
-
-        )
+        })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -329,6 +327,14 @@ private fun CreateTransactionView(
             amountFieldValue =
                 amountFieldValue.copy(selection = TextRange(amountFieldValue.text.length, 0))
         }
+    }
+
+    LaunchedEffect(transactionAmount) {
+        val amountText =
+            transactionAmount.setScale(2, RoundingMode.HALF_UP)
+                .toPlainString()
+        amountFieldValue =
+            TextFieldValue(amountText)
     }
 
 //    LaunchedEffect(transactionAmount) {

@@ -201,6 +201,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                     _transactionAmount.value = BigDecimal.ZERO
                     _smsOperators.value = listOf()
                     _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
+                    _selectedSmsMessage.value = null
                     _shouldModifyAccBal.value = true
                 }
             } catch (e: Exception) {
@@ -280,6 +281,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                     _selectedDate.value = instance
                     _transactionType.value = parser.transactionType
                     _transactionAmount.value = parsedData.amount
+                    _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
                     return@launch
                 }
             }
