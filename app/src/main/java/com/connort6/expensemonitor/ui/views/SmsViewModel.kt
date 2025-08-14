@@ -95,12 +95,13 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
 
         viewModelScope.launch {
             smsRepo.smsMessages.collect { smsMessages -> // updating currently showing list
-                _smsMessages.value = _smsMessages.value
-                    .map {
-                        val findByAddressAndDate = smsRepo.findByAddressAndDate(it.address, it.date)
-                        it.processed = findByAddressAndDate != null
-                        it
-                    }
+                val messages = _smsMessages.value
+                val modifiedMessages = messages.toMutableList().map { message ->
+                    val findByAddressAndDate =
+                        smsRepo.findByAddressAndDate(message.address, message.date)
+                    message.copy(processed = findByAddressAndDate != null)
+                }
+                _smsMessages.value = modifiedMessages
             }
         }
     }
