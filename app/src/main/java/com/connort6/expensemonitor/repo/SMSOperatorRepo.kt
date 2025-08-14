@@ -1,6 +1,5 @@
 package com.connort6.expensemonitor.repo
 
-import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp
@@ -10,7 +9,7 @@ data class SMSOperator(
     @DocumentId override var id: String = "",
     val address: String = "",
     @ServerTimestamp override var lastUpdated: Timestamp? = null,
-    override val deleted: Boolean = false,
+    override var deleted: Boolean = false,
 ) : BaseEntity
 
 data class SMSParser(
@@ -20,7 +19,7 @@ data class SMSParser(
     val pattern: String = "",
     val transactionType: TransactionType = TransactionType.CREDIT,
     @ServerTimestamp override var lastUpdated: Timestamp? = null,
-    override val deleted: Boolean = false,
+    override var deleted: Boolean = false,
 ) : BaseEntity
 
 enum class SMSParseKeys(val matchingRegex: String, val remove: String) {
@@ -29,12 +28,9 @@ enum class SMSParseKeys(val matchingRegex: String, val remove: String) {
 
 class SMSOperatorRepo private constructor() : MainRepository<SMSOperator>(
     SMSOperator::class.java,
-    { it.lastUpdated },
+    { it.lastUpdated }, "smsOperator", "operators",
     { list -> list.sortedBy { it.address } }
 ) {
-    private val mainDocRef = mainCollection.document("smsOperator")
-    override var collection = mainDocRef.collection("operators")
-
 
     val operators = _allData.asStateFlow()
 
@@ -47,9 +43,6 @@ class SMSOperatorRepo private constructor() : MainRepository<SMSOperator>(
         }
     }
 
-    init {
-        loadAll()
-    }
 
     suspend fun findByAddress(address: String): SMSOperator? {
         return findByQuery { it.whereEqualTo(SMSOperator::address.name, address) }
@@ -63,10 +56,7 @@ class SMSOperatorRepo private constructor() : MainRepository<SMSOperator>(
 }
 
 class SMSParserRepo private constructor() :
-    MainRepository<SMSParser>(SMSParser::class.java, { it.lastUpdated }) {
-    private val mainDocRef = mainCollection.document("smsParser")
-    override var collection = mainDocRef.collection("Parsers")
-
+    MainRepository<SMSParser>(SMSParser::class.java, { it.lastUpdated }, "smsParser", "Parsers") {
 
     val parsers = _allData.asStateFlow()
 
@@ -77,10 +67,6 @@ class SMSParserRepo private constructor() :
         fun getInstance(): SMSParserRepo = instance ?: synchronized(this) {
             instance ?: SMSParserRepo().also { instance = it }
         }
-    }
-
-    init {
-        loadAll()
     }
 
     suspend fun findBySmsOperatorId(smsOperatorId: String): List<SMSParser> {

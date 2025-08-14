@@ -1,8 +1,10 @@
 package com.connort6.expensemonitor.repo
 
 import android.util.Log
+import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
@@ -15,18 +17,34 @@ import kotlinx.coroutines.tasks.await
 interface BaseEntity {
     var id: String
     var lastUpdated: Timestamp?
-    val deleted: Boolean
+    var deleted: Boolean
 }
 
 open class MainRepository<T : BaseEntity>(
     private val clazz: Class<T>,
     private val getLastUpdated: (T) -> Timestamp?,
+    mainDocName: String,
+    collectionName: String,
     private val sorting: ((List<T>) -> List<T>)? = null
 ) {
     protected val _allData = MutableStateFlow(listOf<T>())
-    protected open lateinit var collection: CollectionReference
 
-    open fun loadAll() {
+    private val documentRef: DocumentReference = mainCollection.document(mainDocName)
+    private val collection: CollectionReference = documentRef.collection(collectionName)
+
+    init {
+        documentRef.get().addOnSuccessListener {
+            if (!it.exists()) {
+                documentRef.set(hashMapOf<String, Any>()).addOnSuccessListener {
+                    loadAll()
+                }
+            } else {
+                loadAll()
+            }
+        }
+    }
+
+    private fun loadAll() {
         collection.whereEqualTo(BaseEntity::deleted.name, false)
             .orderBy(BaseEntity::lastUpdated.name, Query.Direction.DESCENDING)
             .get(Source.CACHE)
@@ -137,6 +155,15 @@ open class MainRepository<T : BaseEntity>(
         document.set(entity).await()
         entity.id = document.id
         return entity
+    }
+
+    suspend fun deleteById(id: String) {
+        val entity = findById(id)
+        if (entity == null) {
+            return
+        }
+        entity.deleted = true
+        saveOrUpdate(entity)
     }
 
 }

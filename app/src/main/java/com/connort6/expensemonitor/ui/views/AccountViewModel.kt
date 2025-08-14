@@ -81,7 +81,7 @@ class AccountViewModel : ViewModel(), IAccountViewModel {
 
     override fun deleteAccount(accId: String) {
         viewModelScope.launch {
-            accountRepo.deleteAccount(accId)
+            accountRepo.deleteById(accId)
         }
     }
 

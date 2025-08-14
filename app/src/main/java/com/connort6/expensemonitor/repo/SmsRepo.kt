@@ -1,6 +1,5 @@
 package com.connort6.expensemonitor.repo
 
-import com.connort6.expensemonitor.mainCollection
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.Exclude
@@ -23,7 +22,7 @@ data class SmsMessage(
     @ServerTimestamp override var lastUpdated: Timestamp? = null,
     @get:Exclude
     var processed: Boolean = false,
-    override val deleted: Boolean = false
+    override var deleted: Boolean = false
 ) : BaseEntity {
     constructor(
         smsId: String,
@@ -35,15 +34,11 @@ data class SmsMessage(
 }
 
 class SmsRepo private constructor() :
-    MainRepository<SmsMessage>(SmsMessage::class.java, { it.lastUpdated }) {
-    private val messageDocRef = mainCollection.document("messages")
-    override var collection = messageDocRef.collection("sms")
-
+    MainRepository<SmsMessage>(
+        SmsMessage::class.java, { it.lastUpdated },
+        "messages", "sms"
+    ) {
     val smsMessages = _allData.asStateFlow()
-
-    init {
-        loadAll()
-    }
 
     companion object {
         @Volatile
