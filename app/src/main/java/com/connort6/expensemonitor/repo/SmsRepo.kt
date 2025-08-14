@@ -5,6 +5,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.ServerTimestamp
+import kotlinx.coroutines.flow.asStateFlow
 
 data class ProcessedSmsDetails(
     val smsIds: List<String> = mutableListOf(),
@@ -35,21 +36,13 @@ data class SmsMessage(
 
 class SmsRepo private constructor() :
     MainRepository<SmsMessage>(SmsMessage::class.java, { it.lastUpdated }) {
-
     private val messageDocRef = mainCollection.document("messages")
     override var collection = messageDocRef.collection("sms")
 
+    val smsMessages = _allData.asStateFlow()
 
     init {
-        messageDocRef.get().addOnSuccessListener {
-            if (!it.exists()) {
-                messageDocRef.set(ProcessedSmsDetails()).addOnSuccessListener {
-                    listenDocChange()
-                }
-            } else {
-                listenDocChange()
-            }
-        }
+        loadAll()
     }
 
     companion object {
@@ -57,15 +50,6 @@ class SmsRepo private constructor() :
         private var instance: SmsRepo? = null
         fun getInstance(): SmsRepo = instance ?: synchronized(this) {
             instance ?: SmsRepo().also { instance = it }
-        }
-    }
-
-    private fun listenDocChange() {
-        messageDocRef.addSnapshotListener { snapShot, _ ->
-            if (snapShot == null || !snapShot.exists()) {
-                return@addSnapshotListener
-            }
-
         }
     }
 

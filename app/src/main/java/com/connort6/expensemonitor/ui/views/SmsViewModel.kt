@@ -92,6 +92,17 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
                 _smsSenders.value = it
             })
         }
+
+        viewModelScope.launch {
+            smsRepo.smsMessages.collect { smsMessages -> // updating currently showing list
+                _smsMessages.value = _smsMessages.value
+                    .map {
+                        val findByAddressAndDate = smsRepo.findByAddressAndDate(it.address, it.date)
+                        it.processed = findByAddressAndDate != null
+                        it
+                    }
+            }
+        }
     }
 
     override fun loadSmsMessages(smsLoadMethod: SMSLoadMethod, allowedSenders: List<String>) {
@@ -286,36 +297,38 @@ class SmsViewModel(application: Application) : AndroidViewModel(application), IS
 
 class MockSmsViewModel : ISmsViewModel {
 
-    override val smsMessages: StateFlow<List<SmsMessage>> = MutableStateFlow(listOf(
-        SmsMessage(
-            "1",
-            "Savings Bank",
-            "Your account balance is $1,250.50",
-            System.currentTimeMillis() - 100000,
-            1
-        ),
-        SmsMessage(
-            "2",
-            "Credit Card Co.",
-            "Alert: A transaction of $75.20 was made.",
-            System.currentTimeMillis() - 200000,
-            1
-        ),
-        SmsMessage(
-            "3",
-            "Mobile Carrier",
-            "Your bill for $45.00 is due on 07/15.",
-            System.currentTimeMillis() - 300000,
-            1
-        ),
-        SmsMessage(
-            "4",
-            "Utility Services",
-            "Reminder: Payment for electricity is $88.90.",
-            System.currentTimeMillis() - 400000,
-            1
+    override val smsMessages: StateFlow<List<SmsMessage>> = MutableStateFlow(
+        listOf(
+            SmsMessage(
+                "1",
+                "Savings Bank",
+                "Your account balance is $1,250.50",
+                System.currentTimeMillis() - 100000,
+                1
+            ),
+            SmsMessage(
+                "2",
+                "Credit Card Co.",
+                "Alert: A transaction of $75.20 was made.",
+                System.currentTimeMillis() - 200000,
+                1
+            ),
+            SmsMessage(
+                "3",
+                "Mobile Carrier",
+                "Your bill for $45.00 is due on 07/15.",
+                System.currentTimeMillis() - 300000,
+                1
+            ),
+            SmsMessage(
+                "4",
+                "Utility Services",
+                "Reminder: Payment for electricity is $88.90.",
+                System.currentTimeMillis() - 400000,
+                1
+            )
         )
-    )).asStateFlow()
+    ).asStateFlow()
     // Or for non-interface version:
     // val smsMessages: StateFlow<List<SmsMessage>> get() = _smsMessages.asStateFlow()
 
