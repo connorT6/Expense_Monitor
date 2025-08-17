@@ -2,11 +2,13 @@ package com.connort6.expensemonitor.repo
 
 import android.util.Log
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp
 import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.asStateFlow
 
 data class Account(
+    @DocumentId
     override var id: String = "",
     val name: String = "",
     var balance: Double = 0.0,

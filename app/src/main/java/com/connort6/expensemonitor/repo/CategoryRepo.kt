@@ -1,11 +1,13 @@
 package com.connort6.expensemonitor.repo
 
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp
 import kotlinx.coroutines.flow.asStateFlow
 
 
 data class Category(
+    @DocumentId
     override var id: String = "",
     val name: String = "",
     override var deleted: Boolean = false,
