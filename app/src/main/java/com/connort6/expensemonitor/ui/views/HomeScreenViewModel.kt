@@ -40,6 +40,8 @@ interface IHomeScreenViewModel {
     val selectedDate: StateFlow<Calendar>
     val selectedTime: Flow<LocalTime>
     val selectedSmsMessage: StateFlow<SmsMessage?>
+
+    val remark: StateFlow<String>
     val selectedTransactionType: StateFlow<TransactionType>
     val transactionAmount: StateFlow<BigDecimal>
     val smsOperators: StateFlow<List<SMSOperator>>
@@ -58,6 +60,7 @@ interface IHomeScreenViewModel {
     fun showCreateTransaction(show: Boolean)
     fun selectSmsMessage(selectedSms: SmsMessage?)
     fun setAccBalModify(modify: Boolean)
+    fun setRemark(remark: String)
 
     enum class ErrorCodes {
         NONE,
@@ -89,6 +92,9 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             calendar.get(Calendar.SECOND)
         )
     }
+
+    private val _remark = MutableStateFlow("")
+    override val remark = _remark.asStateFlow()
 
     private val _transactionType = MutableStateFlow(TransactionType.DEBIT)
     override val selectedTransactionType = _transactionType.asStateFlow()
@@ -167,7 +173,8 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                 _transactionAmount.value.toDouble(),
                 _transactionType.value,
                 createdTime = Timestamp(_selectedDate.value.time),
-                smsId = savedSms?.id
+                smsId = savedSms?.id,
+                remark = _remark.value
                 //TODO update sms
             )
 
@@ -203,6 +210,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                     _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
                     _selectedSmsMessage.value = null
                     _shouldModifyAccBal.value = true
+                    _remark.value = ""
                 }
             } catch (e: Exception) {
                 Log.e(HomeScreenViewModel::class.java.name, "createTransaction failed: ", e)
@@ -294,6 +302,10 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     override fun setAccBalModify(modify: Boolean) {
         _shouldModifyAccBal.value = modify
     }
+
+    override fun setRemark(remark: String) {
+        _remark.value = remark
+    }
 }
 
 
@@ -364,6 +376,9 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
         println("MockPreview: selectTime called with $time")
     }
 
+    override val remark: StateFlow<String>
+        get() = MutableStateFlow("").asStateFlow()
+
     override val selectedTransactionType: StateFlow<TransactionType> =
         MutableStateFlow(TransactionType.DEBIT).asStateFlow()
 
@@ -414,6 +429,10 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
     }
 
     override fun setAccBalModify(modify: Boolean) {
+
+    }
+
+    override fun setRemark(remark: String) {
 
     }
 

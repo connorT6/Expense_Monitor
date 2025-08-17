@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
@@ -314,6 +316,7 @@ private fun CreateTransactionView(
     val transactionAmount by homeScreenViewModel.transactionAmount.collectAsState()
     val selectedDateState by homeScreenViewModel.selectedDate.collectAsState()
     val selectedTimeState by homeScreenViewModel.selectedTime.collectAsState(LocalTime.now())
+    val remark by homeScreenViewModel.remark.collectAsState()
     val selectedMessage by homeScreenViewModel.selectedSmsMessage.collectAsState()
     val errorCode by homeScreenViewModel.errorCode.collectAsState()
     val shouldModifyAccBal by homeScreenViewModel.shouldModifyAccBal.collectAsState()
@@ -389,7 +392,9 @@ private fun CreateTransactionView(
         ) {
 
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
 
                 DropDownOutlineTextField(
@@ -491,13 +496,26 @@ private fun CreateTransactionView(
                     )
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(18.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(shouldModifyAccBal, { homeScreenViewModel.setAccBalModify(it) })
 //                    Spacer(Modifier.width(8.dp))
                     Text("Modify account balance")
                 }
+
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = remark,
+                    onValueChange = { fieldValue ->
+                        homeScreenViewModel.setRemark(fieldValue)
+                    },
+                    label = {
+                        Text("Remark")
+                    },
+                    maxLines = 5
+                )
 
                 if (selectedMessage != null) {
                     Spacer(Modifier.height(12.dp))

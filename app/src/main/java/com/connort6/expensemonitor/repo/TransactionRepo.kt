@@ -16,6 +16,7 @@ data class Transaction(
     val swapAccountId: String? = null,
     val createdTime: Timestamp = Timestamp.now(),
     val smsId: String? = null,
+    val remark: String? = null,
     @ServerTimestamp override var lastUpdated: Timestamp? = null,
     override var deleted: Boolean = false,
     @get:Exclude
@@ -25,8 +26,6 @@ data class Transaction(
     @DocumentId
     override var id: String = ""
 ) : BaseEntity {
-
-    constructor() : this("", "", 0.0, TransactionType.DEBIT)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
