@@ -126,8 +126,8 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             }
         }
         viewModelScope.launch {
-            categoryRepo.categoryFlow.collect {
-                _categories.value = it.toList()
+            categoryRepo.categories.collect {
+                _categories.value = it
             }
         }
     }

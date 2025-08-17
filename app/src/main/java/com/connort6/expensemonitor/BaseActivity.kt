@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 open class BaseActivity : ComponentActivity() {
 
     protected val mainViewModel: MainViewModel by lazy {
-        val storeOwner = MainViewModelStoreOwner(application)
+        val storeOwner = MainViewModelStoreOwner()
         ViewModelProvider(storeOwner, MainViewModelFactory(application))[MainViewModel::class.java]
     }
 
@@ -56,10 +56,6 @@ class MainViewModelFactory(private val application: Application) : ViewModelProv
     }
 }
 
-class MainViewModelStoreOwner(private val application: Application) : ViewModelStoreOwner {
+class MainViewModelStoreOwner() : ViewModelStoreOwner {
     override val viewModelStore = ViewModelStore()
-
-    fun getViewModelStore(): ViewModelStore {
-        return viewModelStore
-    }
 }

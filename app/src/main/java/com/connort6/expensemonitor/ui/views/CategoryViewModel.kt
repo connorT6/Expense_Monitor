@@ -20,8 +20,8 @@ class CategoryViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
-            categoryRepo.categoryFlow.collect { categories ->
-                _categories.update { categories }
+            categoryRepo.categories.collect { categories ->
+                _categories.update { categories.toSet()}
             }
         }
     }
@@ -59,7 +59,7 @@ class CategoryViewModel : ViewModel() {
 
     fun deleteCategory(id: String) {
         viewModelScope.launch {
-            categoryRepo.deleteCategory(id)
+            categoryRepo.deleteById(id)
         }
     }
 

@@ -21,13 +21,11 @@ import com.connort6.expensemonitor.ui.views.IconPickerViewModel
 import com.connort6.expensemonitor.ui.views.SmsReaderScreen
 import com.connort6.expensemonitor.ui.views.SmsViewModel
 import com.connort6.expensemonitor.ui.views.TransactionScreen
-import com.google.firebase.firestore.CollectionReference
 
 //
 //
 //data class Reg(val regex: Regex)
 
-var mainCollection: CollectionReference? = null
 
 class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,7 +1,7 @@
 package com.connort6.expensemonitor.repo
 
 import android.util.Log
-import com.connort6.expensemonitor.mainCollection
+import com.connort6.expensemonitor.ui.views.mainCollection
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
@@ -29,7 +29,7 @@ open class MainRepository<T : BaseEntity>(
 ) {
     protected val _allData = MutableStateFlow(listOf<T>())
 
-    private val documentRef: DocumentReference = mainCollection.document(mainDocName)
+    private val documentRef: DocumentReference = mainCollection().document(mainDocName)
     private val collection: CollectionReference = documentRef.collection(collectionName)
 
     init {

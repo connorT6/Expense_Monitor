@@ -2,14 +2,17 @@ package com.connort6.expensemonitor.ui.views
 
 import android.app.Application
 import android.util.Log
+import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.ClearCredentialException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
+import com.connort6.expensemonitor.config.collectionName
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
@@ -17,6 +20,8 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +37,15 @@ interface IMainViewModel {
     fun resetLoginAction()
 }
 
+private var mainCollection: CollectionReference? = null
+
+fun mainCollection(): CollectionReference {
+    if (mainCollection != null){
+        return mainCollection!!
+    } else {
+        throw Exception("mainCollection is null")
+    }
+}
 
 class MainViewModel(application: Application) : IMainViewModel,
     AndroidViewModel(application) {
@@ -50,6 +64,9 @@ class MainViewModel(application: Application) : IMainViewModel,
         viewModelScope.launch {
             auth.addAuthStateListener {
                 if (it.currentUser != null) {
+                    mainCollection =
+                        FirebaseFirestore.getInstance().collection(collectionName)
+                            .document(it.currentUser!!.uid).collection("data")
                     _status.value = 1
                 } else {
                     _status.value = -1
@@ -95,11 +112,14 @@ class MainViewModel(application: Application) : IMainViewModel,
 
                 // Extract credential from the result returned by Credential Manager
                 handleSignIn(result.credential)
+//                delay(5000)
+//                signOut()
             } catch (e: GetCredentialException) {
                 Log.e(
                     this.javaClass.name,
                     "Couldn't retrieve user's credentials: ${e.localizedMessage}"
                 )
+                _status.value = -1
             }
 
         }
@@ -115,6 +135,7 @@ class MainViewModel(application: Application) : IMainViewModel,
             firebaseAuthWithGoogle(googleIdTokenCredential.idToken)
         } else {
             Log.w(this.javaClass.name, "Credential is not of type Google ID!")
+            _status.value = -1
         }
     }
 
@@ -124,8 +145,27 @@ class MainViewModel(application: Application) : IMainViewModel,
             val result = auth.signInWithCredential(credential).await()
         } catch (e: Exception) {
             Log.e(this.javaClass.name, "Google sign in failed", e)
+            _status.value = -1
         }
 
+    }
+
+    private fun signOut() {
+        // Firebase sign out
+        auth.signOut()
+
+        // When a user signs out, clear the current user credential state from all credential providers.
+        viewModelScope.launch {
+            try {
+                val clearRequest = ClearCredentialStateRequest()
+                credentialManager.clearCredentialState(clearRequest)
+            } catch (e: ClearCredentialException) {
+                Log.e(
+                    this.javaClass.name,
+                    "Couldn't clear user's credentials: ${e.localizedMessage}"
+                )
+            }
+        }
     }
 
     override fun resetLoginAction() {
