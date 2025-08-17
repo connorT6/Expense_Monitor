@@ -26,7 +26,6 @@
         <activity
             android:name=".LoginActivity"
             android:exported="true"
-            android:label="@string/title_activity_login"
             android:theme="@style/Theme.ExpenseMonitor">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
