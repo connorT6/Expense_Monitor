@@ -3,7 +3,6 @@ package com.connort6.expensemonitor
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -25,11 +24,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
-import com.connort6.expensemonitor.ui.views.ILoginScreenViewModel
-import com.connort6.expensemonitor.ui.views.LoginScreenViewModel
-import com.connort6.expensemonitor.ui.views.MockLoginViewModel
+import com.connort6.expensemonitor.ui.views.IMainViewModel
+import com.connort6.expensemonitor.ui.views.MainViewModel
+import com.connort6.expensemonitor.ui.views.MockMainViewModel
 
-class LoginActivity : ComponentActivity() {
+class LoginActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val navigateToMain : () -> Unit = {
@@ -49,12 +48,12 @@ class LoginActivity : ComponentActivity() {
 
 @Composable
 fun LoginScreen(navigateToMain: () -> Unit) {
-    val viewModel: LoginScreenViewModel = viewModel()
+    val viewModel: MainViewModel = viewModel()
     LoginView(viewModel, navigateToMain)
 }
 
 @Composable
-private fun LoginView(viewModel: ILoginScreenViewModel, navigateToMain: () -> Unit) {
+private fun LoginView(viewModel: IMainViewModel, navigateToMain: () -> Unit) {
     val status by viewModel.status.collectAsStateWithLifecycle()
 
     Box(
@@ -101,7 +100,7 @@ fun GoogleSignInButton(
 @Composable
 fun LoginScreenPreview() {
     ExpenseMonitorTheme {
-        LoginView(MockLoginViewModel(), {})
+        LoginView(MockMainViewModel(), {})
     }
 }
 

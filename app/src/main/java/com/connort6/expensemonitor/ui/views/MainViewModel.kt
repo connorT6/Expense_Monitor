@@ -23,20 +23,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-interface ILoginScreenViewModel {
+interface IMainViewModel {
 
     val status: StateFlow<Int>
+    val loginAction: StateFlow<Int>
 
     fun startLogin()
+    fun resetLoginAction()
 }
 
 
-class LoginScreenViewModel(application: Application) : ILoginScreenViewModel,
+class MainViewModel(application: Application) : IMainViewModel,
     AndroidViewModel(application) {
 
     private val _status = MutableStateFlow(0) // loading: 0, authed: 1, not authed : -1
     override val status = _status.asStateFlow()
 
+    private val _loginAction = MutableStateFlow(0)
+    override val loginAction = _loginAction.asStateFlow()
 
     private val auth: FirebaseAuth = Firebase.auth
     private val credentialManager = CredentialManager.create(application)
@@ -49,6 +53,18 @@ class LoginScreenViewModel(application: Application) : ILoginScreenViewModel,
                     _status.value = 1
                 } else {
                     _status.value = -1
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            var prevState = 0
+            status.collect { current ->
+                if (prevState == current) {
+                    return@collect
+                }
+                if (prevState == 1 && current == -1) {
+                    _loginAction.value = -1
                 }
             }
         }
@@ -111,16 +127,27 @@ class LoginScreenViewModel(application: Application) : ILoginScreenViewModel,
         }
 
     }
+
+    override fun resetLoginAction() {
+        _loginAction.value == 0
+    }
 }
 
 
-class MockLoginViewModel : ILoginScreenViewModel {
+class MockMainViewModel : IMainViewModel {
 
     private val _status = MutableStateFlow(0) // loading: 0, authed: 1, not authed : -1
     override val status = _status.asStateFlow()
 
+    private val _loginAction = MutableStateFlow(0)
+    override val loginAction = _loginAction.asStateFlow()
+
 
     override fun startLogin() {
+
+    }
+
+    override fun resetLoginAction() {
 
     }
 }

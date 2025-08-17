@@ -1,7 +1,6 @@
 package com.connort6.expensemonitor
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -12,7 +11,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.connort6.expensemonitor.config.collectionName
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import com.connort6.expensemonitor.ui.views.AccountScreen
 import com.connort6.expensemonitor.ui.views.CategoryScreen
@@ -23,15 +21,15 @@ import com.connort6.expensemonitor.ui.views.IconPickerViewModel
 import com.connort6.expensemonitor.ui.views.SmsReaderScreen
 import com.connort6.expensemonitor.ui.views.SmsViewModel
 import com.connort6.expensemonitor.ui.views.TransactionScreen
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.CollectionReference
 
 //
 //
 //data class Reg(val regex: Regex)
 
-val mainCollection = FirebaseFirestore.getInstance().collection(collectionName)
+var mainCollection: CollectionReference? = null
 
-class MainActivity : ComponentActivity() {
+class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 //        enableEdgeToEdge()
