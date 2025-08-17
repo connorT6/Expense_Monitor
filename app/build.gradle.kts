@@ -101,4 +101,5 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.material.icons.extended)
     implementation (libs.charts)
+    implementation(libs.play.services.auth)
 }
