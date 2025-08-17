@@ -104,4 +104,5 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation (libs.charts)
     implementation(libs.play.services.auth)
+    implementation("io.coil-kt:coil-compose:2.7.0") // Check for the latest version
 }
