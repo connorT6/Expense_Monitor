@@ -324,21 +324,20 @@ private fun CreateTransactionView(
     val amountFocusRequester by remember { mutableStateOf(FocusRequester()) }
     var amountFocused by remember { mutableStateOf(false) }
 
-    var amountFieldValue by remember { mutableStateOf(TextFieldValue()) }
+    val amountText = transactionToEdit?.amount?.let {
+        BigDecimal(it).setScale(2, RoundingMode.HALF_UP).toPlainString()
+    } ?: ""
+    var amountTextFVal = TextFieldValue()
+    if (amountText.isNotEmpty()) {
+        amountTextFVal = amountTextFVal.copy(text = amountText)
+    }
+    var amountFieldValue by remember { mutableStateOf(amountTextFVal) }
 
     LaunchedEffect(amountFocused) {
         if (amountFocused) {
             amountFieldValue =
                 amountFieldValue.copy(selection = TextRange(amountFieldValue.text.length, 0))
         }
-    }
-
-    LaunchedEffect(transactionAmount) {
-        val amountText =
-            transactionAmount.setScale(2, RoundingMode.HALF_UP)
-                .toPlainString()
-        amountFieldValue =
-            TextFieldValue(amountText)
     }
 
 //    LaunchedEffect(transactionAmount) {

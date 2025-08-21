@@ -8,10 +8,10 @@ import kotlinx.coroutines.flow.asStateFlow
 
 
 data class Transaction(
-    val accountId: String,
-    val categoryId: String,
-    val amount: Double,
-    val transactionType: TransactionType,
+    val accountId: String = "",
+    val categoryId: String =  "",
+    val amount: Double = 0.0,
+    val transactionType: TransactionType = TransactionType.CREDIT,
     val isSwap: Boolean = false,
     val swapAccountId: String? = null,
     val createdTime: Timestamp = Timestamp.now(),
@@ -26,6 +26,7 @@ data class Transaction(
     @DocumentId
     override var id: String = ""
 ) : BaseEntity {
+
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
