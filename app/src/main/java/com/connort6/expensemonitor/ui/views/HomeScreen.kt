@@ -92,6 +92,7 @@ import java.text.SimpleDateFormat
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 data class AutoCompleteObj(val id: String, val name: String, val obj: Any? = null)
@@ -324,21 +325,20 @@ private fun CreateTransactionView(
     val amountFocusRequester by remember { mutableStateOf(FocusRequester()) }
     var amountFocused by remember { mutableStateOf(false) }
 
-    var amountFieldValue by remember { mutableStateOf(TextFieldValue()) }
+    val amountText = transactionToEdit?.amount?.let {
+        BigDecimal(it).setScale(2, RoundingMode.HALF_UP).toPlainString()
+    } ?: ""
+    var amountTextFVal = TextFieldValue()
+    if (amountText.isNotEmpty()) {
+        amountTextFVal = amountTextFVal.copy(text = amountText)
+    }
+    var amountFieldValue by remember { mutableStateOf(amountTextFVal) }
 
     LaunchedEffect(amountFocused) {
         if (amountFocused) {
             amountFieldValue =
                 amountFieldValue.copy(selection = TextRange(amountFieldValue.text.length, 0))
         }
-    }
-
-    LaunchedEffect(transactionAmount) {
-        val amountText =
-            transactionAmount.setScale(2, RoundingMode.HALF_UP)
-                .toPlainString()
-        amountFieldValue =
-            TextFieldValue(amountText)
     }
 
 //    LaunchedEffect(transactionAmount) {
@@ -354,10 +354,10 @@ private fun CreateTransactionView(
     var showTimePicker by remember { mutableStateOf(false) }
 
 
-    var selectedDate by remember { mutableStateOf(formatter.format(selectedDateState.time)) }
+    var selectedDate by remember { mutableStateOf(formatter.format(Date(selectedDateState))) }
 
     LaunchedEffect(selectedDateState) {
-        selectedDate = formatter.format(selectedDateState.time)
+        selectedDate = formatter.format(Date(selectedDateState))
     }
 
 
@@ -369,9 +369,12 @@ private fun CreateTransactionView(
 
     val interactionSource = remember { MutableInteractionSource() }
 
+    val instance = Calendar.getInstance()
+    instance.time = Date(selectedDateState)
+
     if (showDatePicker) {
         DatePickerPopUp(
-            homeScreenViewModel, selectedDateState
+            homeScreenViewModel, instance,
         ) {
             showDatePicker = false
             // Date selection handled in DatePick composable

@@ -9,8 +9,8 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.connort6.expensemonitor" />
-                  <option name="mobileSdkAppId" value="1:634072896448:android:a44923ba87ee1a55252e25" />
+                  <option name="appId" value="com.connort6.expensemonitor.test" />
+                  <option name="mobileSdkAppId" value="1:634072896448:android:6c3b39da300f28a9252e25" />
                   <option name="projectId" value="expense-monitor-4fb33" />
                   <option name="projectNumber" value="634072896448" />
                 </ConnectionSetting>
