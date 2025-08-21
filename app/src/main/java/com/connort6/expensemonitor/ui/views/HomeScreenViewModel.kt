@@ -37,7 +37,7 @@ interface IHomeScreenViewModel {
     val categories: StateFlow<List<Category>>
     val selectedAccount: StateFlow<Account?>
     val selectedCategory: StateFlow<Category?>
-    val selectedDate: StateFlow<Calendar>
+    val selectedDate: StateFlow<Long>
     val selectedTime: Flow<LocalTime>
     val selectedSmsMessage: StateFlow<SmsMessage?>
 
@@ -83,9 +83,11 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val _selectedCategory = MutableStateFlow<Category?>(null)
     override val selectedCategory = _selectedCategory.asStateFlow()
 
-    private val _selectedDate = MutableStateFlow(Calendar.getInstance())
+    private val _selectedDate = MutableStateFlow(System.currentTimeMillis())
     override val selectedDate = _selectedDate.asStateFlow()
-    override val selectedTime = selectedDate.map { calendar ->
+    override val selectedTime = selectedDate.map { timeMillis ->
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timeMillis
         LocalTime.of(
             calendar.get(Calendar.HOUR_OF_DAY),
             calendar.get(Calendar.MINUTE),
@@ -136,6 +138,13 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                 _categories.value = it
             }
         }
+
+        viewModelScope.launch {
+            selectedDate.collect { calendar ->
+                Log.d("DateUpdate", "New date: ${calendar}")
+                // Update UI
+            }
+        }
     }
 
     override fun saveTransaction(transaction: Transaction) {
@@ -172,7 +181,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                 _selectedCategory.value!!.id,
                 _transactionAmount.value.toDouble(),
                 _transactionType.value,
-                createdTime = Timestamp(_selectedDate.value.time),
+                createdTime = Timestamp(Date(_selectedDate.value)),
                 smsId = savedSms?.id,
                 remark = _remark.value
                 //TODO update sms
@@ -204,7 +213,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                 }.addOnSuccessListener {
                     _selectedAccount.value = null
                     _selectedCategory.value = null
-                    _selectedDate.value = Calendar.getInstance()
+                    _selectedDate.value = Date().time
                     _transactionAmount.value = BigDecimal.ZERO
                     _smsOperators.value = listOf()
                     _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
@@ -227,16 +236,18 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     }
 
     override fun selectDate(calendar: Calendar) {
-        _selectedDate.value = calendar
+        val instance = Calendar.getInstance()
+        instance.time = calendar.time
+        _selectedDate.value = instance.time.time
     }
 
     override fun selectTime(time: LocalTime) {
-        _selectedDate.value = _selectedDate.value.let { calendar ->
-            calendar.set(Calendar.HOUR_OF_DAY, time.hour)
-            calendar.set(Calendar.MINUTE, time.minute)
-            calendar.set(Calendar.SECOND, time.second)
-            calendar
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, time.hour)
+            set(Calendar.MINUTE, time.minute)
+            set(Calendar.SECOND, time.second)
         }
+        _selectedDate.value = calendar.time.time
     }
 
     override fun selectTransactionType(transactionType: TransactionType) {
@@ -286,7 +297,7 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
                     val instance = Calendar.getInstance()
                     val date = Date(selectedSms.date)
                     instance.time = date
-                    _selectedDate.value = instance
+                    _selectedDate.value = date.time
                     _transactionType.value = parser.transactionType
                     _transactionAmount.value = parsedData.amount
                     _errorCode.value = IHomeScreenViewModel.ErrorCodes.NONE
@@ -362,8 +373,8 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
         println("MockPreview: selectCategory called with $category")
     }
 
-    override val selectedDate: StateFlow<Calendar> =
-        MutableStateFlow(Calendar.getInstance()).asStateFlow()
+    override val selectedDate: StateFlow<Long> =
+        MutableStateFlow(2154641654L).asStateFlow()
 
     override fun selectDate(calendar: Calendar) {
         println("MockPreview: selectDate called with $calendar")

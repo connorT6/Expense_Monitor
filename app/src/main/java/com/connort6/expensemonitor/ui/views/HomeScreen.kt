@@ -92,6 +92,7 @@ import java.text.SimpleDateFormat
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 data class AutoCompleteObj(val id: String, val name: String, val obj: Any? = null)
@@ -353,10 +354,10 @@ private fun CreateTransactionView(
     var showTimePicker by remember { mutableStateOf(false) }
 
 
-    var selectedDate by remember { mutableStateOf(formatter.format(selectedDateState.time)) }
+    var selectedDate by remember { mutableStateOf(formatter.format(Date(selectedDateState))) }
 
     LaunchedEffect(selectedDateState) {
-        selectedDate = formatter.format(selectedDateState.time)
+        selectedDate = formatter.format(Date(selectedDateState))
     }
 
 
@@ -368,9 +369,12 @@ private fun CreateTransactionView(
 
     val interactionSource = remember { MutableInteractionSource() }
 
+    val instance = Calendar.getInstance()
+    instance.time = Date(selectedDateState)
+
     if (showDatePicker) {
         DatePickerPopUp(
-            homeScreenViewModel, selectedDateState
+            homeScreenViewModel, instance,
         ) {
             showDatePicker = false
             // Date selection handled in DatePick composable
