@@ -34,6 +34,7 @@ import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import kotlinx.coroutines.launch
 import kotlin.math.PI
+import kotlin.math.absoluteValue
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
@@ -67,8 +68,8 @@ fun PieChart(pies: List<PieChartData>) {
     val totalValue = pies.sumOf { it.value }
     var totalSweep = 0f
     var pieList by remember {
-        mutableStateOf(pies.mapIndexed {index, it ->
-            if (index == 0){
+        mutableStateOf(pies.mapIndexed { index, it ->
+            if (index == 0) {
                 totalSweep = 0f;
             }
             it.apply {
@@ -82,8 +83,8 @@ fun PieChart(pies: List<PieChartData>) {
     val strokeWidth = 30.dp
     var startAngle = 0f
     val coroutineScope = rememberCoroutineScope()
-    val iconOffset = 45.dp
-    val iconSpace = 10.dp
+//    val iconOffset = 45.dp
+    val iconSpace = 1.dp
     val selectedScale = 1.1f
     val labelFontSize = 18.sp
     val imageTextSpace = 0.dp
@@ -168,29 +169,13 @@ fun PieChart(pies: List<PieChartData>) {
                 style = Stroke(width = strokeWidthPx)
             )
 
-            // icon & details will show on the center of slice
-            val middleAngle: Double = (startAngle + pieData.angle / 2).toDouble()
-            val middleAngleInRadians = middleAngle / 180 * PI // converting to radians
-
-            // icon offset is the space between pie chart and icon
-            val iconOffsetPx = with(density) { iconOffset.toPx() }
-            val iconSpacePx = with(density) { iconSpace.toPx() }
-            val edgeRadius = radius + (strokeWidthPx / 2) // edge od the pie chart angle calculated CW
-            val xOffset = (edgeRadius + iconOffsetPx) * cos(middleAngleInRadians)
-            val yOffset = (edgeRadius + iconOffsetPx) * sin(middleAngleInRadians)
-
-            // This is the center point for our image + text group
-            val groupCenterX = (center.x + xOffset).toFloat()
-            val groupCenterY = (center.y + yOffset).toFloat()
 
             // Image dimensions in pixels
             val imageWidthPx = with(density) { imageSize.width.dp.toPx() }
             val imageHeightPx = with(density) { imageSize.height.dp.toPx() }
 
-
             // 1. Measure androidx . compose . material3 . Text
             val textToDraw = AnnotatedString(pieData.label)
-            // You can customize the text style here if needed
 
             val textLayoutResult = textMeasurer.measure(text = textToDraw, style = textStyle)
             val textWidthPx = textLayoutResult.size.width.toFloat()
@@ -199,9 +184,39 @@ fun PieChart(pies: List<PieChartData>) {
             // Define spacing between image and text in pixels
             val spacingPx = with(density) { imageTextSpace.toPx() }
 
+
             // 2. Calculate Total Height of the group (image + space + text)
             val groupHeight = imageHeightPx + spacingPx + textHeightPx
             val groupWidth = maxOf(imageWidthPx, textWidthPx)
+
+
+            // icon & details will show on the center of slice
+            val middleAngle: Double = (startAngle + pieData.angle / 2).toDouble()
+            val middleAngleInRadians = middleAngle / 180 * PI // converting to radians
+
+
+            val closestAngleDegrees = calculateAngleDifference(middleAngle, groupWidth, groupHeight)
+            val closestAngleRadians = closestAngleDegrees * (PI / 180.0)
+            val distance =
+                calculateDistanceToRectangleCorner(groupWidth, groupHeight)
+
+            val edgeRadius =
+                radius + (strokeWidthPx / 2) // edge od the pie chart angle calculated CW
+
+            val offsetToNearestPoint = edgeRadius + with(density) { iconSpace.toPx() }
+            val iconOffsetPx =
+                sqrt((offsetToNearestPoint.pow(2)) - (sin(closestAngleRadians) * distance).pow(2)) +
+                        cos(closestAngleRadians) * distance
+
+            // icon offset is the space between pie chart and icon
+//            val iconOffsetPx = with(density) { iconOffset.toPx() }
+
+            val xOffset = iconOffsetPx * cos(middleAngleInRadians)
+            val yOffset = iconOffsetPx * sin(middleAngleInRadians)
+
+            // This is the center point for our image + text group
+            val groupCenterX = (center.x + xOffset).toFloat()
+            val groupCenterY = (center.y + yOffset).toFloat()
 
             // TODO set space between pie chart and group with the closest point
 
@@ -245,6 +260,56 @@ private fun calculateCenterOffset(width: Number, height: Number): Offset {
 
 private fun calculatePieChartRadius(width: Number, height: Number): Float {
     return min(width.toFloat(), height.toFloat()) / 4f
+}
+
+private fun calculateDistanceToRectangleCorner(
+    rectangleWidth: Float,
+    rectangleHeight: Float
+): Float {
+    return sqrt((rectangleWidth / 2).pow(2) + (rectangleHeight / 2).pow(2))
+}
+
+private fun calculateAngleDifference(
+    angleDegrees: Double,
+    rectangleWidth: Float,
+    rectangleHeight: Float
+): Double {
+    // Convert angle to radians for trigonometric functions
+
+
+    // Calculate the coordinates of the corners relative to the center (0,0)
+    val halfWidth = rectangleWidth / 2.0
+    val halfHeight = rectangleHeight / 2.0
+
+    val topRight = Pair(halfWidth, -halfHeight)
+    val topLeft = Pair(-halfWidth, -halfHeight)
+    val bottomLeft = Pair(-halfWidth, halfHeight)
+    val bottomRight = Pair(halfWidth, halfHeight)
+
+    // Calculate the angles to each corner from the center, clockwise from x-axis
+    // atan2(y, x) gives angle in radians from -PI to PI. We adjust to degrees [0, 360) clockwise.
+    val angleTopRight = Math.toDegrees(atan2(topRight.second, topRight.first))
+    val angleTopLeft = Math.toDegrees(atan2(topLeft.second, topLeft.first))
+    val angleBottomLeft = Math.toDegrees(atan2(bottomLeft.second, bottomLeft.first))
+    val angleBottomRight = Math.toDegrees(atan2(bottomRight.second, bottomRight.first))
+
+    val normalizedAngle = (angleDegrees + 180) % 360 // changing angle to other side
+
+    val minAngle =
+        listOf(angleTopRight, angleTopLeft, angleBottomLeft, angleBottomRight).map {
+            var angle: Double = it
+// 2. Ensure the angle is in the [0, 360) range
+            if (angle < 0) {
+                angle += 360
+            }
+// For angles that are exactly 360 (e.g. from an initial -0.0), map them to 0
+            if (angle == 360.0) {
+                angle = 0.0
+            }
+            return@map (angle - normalizedAngle).absoluteValue
+        }.minOrNull() ?: 0.0
+
+    return minAngle
 }
 
 @Preview(name = "Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES)
