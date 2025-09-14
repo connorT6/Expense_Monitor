@@ -1,13 +1,13 @@
 package com.connort6.expensemonitor.ui.views
 
 import android.content.res.Configuration
-import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,10 +22,14 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.ui.theme.ExpenseMonitorTheme
 import kotlinx.coroutines.launch
@@ -58,6 +62,8 @@ data class PieChartData(
 //TODO convert all measurements to dp
 @Composable
 fun PieChart(pies: List<PieChartData>) {
+
+    val textMeasurer = rememberTextMeasurer()
     val totalValue = pies.sumOf { it.value }
     var totalSweep = 0f
     var pieList by remember {
@@ -76,8 +82,17 @@ fun PieChart(pies: List<PieChartData>) {
     val strokeWidth = 30.dp
     var startAngle = 0f
     val coroutineScope = rememberCoroutineScope()
-    val iconOffset = 30.dp
+    val iconOffset = 45.dp
+    val iconSpace = 10.dp
     val selectedScale = 1.1f
+    val labelFontSize = 18.sp
+    val imageTextSpace = 0.dp
+
+    val textStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = labelFontSize,
+        color = MaterialTheme.colorScheme.onSurface // Use a theme-aware color
+    )
+
     Canvas(
         modifier = Modifier
             .fillMaxSize()
@@ -159,38 +174,59 @@ fun PieChart(pies: List<PieChartData>) {
 
             // icon offset is the space between pie chart and icon
             val iconOffsetPx = with(density) { iconOffset.toPx() }
+            val iconSpacePx = with(density) { iconSpace.toPx() }
             val edgeRadius = radius + (strokeWidthPx / 2) // edge od the pie chart angle calculated CW
             val xOffset = (edgeRadius + iconOffsetPx) * cos(middleAngleInRadians)
             val yOffset = (edgeRadius + iconOffsetPx) * sin(middleAngleInRadians)
-            // image offset should be the top left corner of the image. hence the middle will be on the center
-            val imageOffset = Offset(
-                (center.x + xOffset).toFloat() - (with(density) {
-                    imageSize.width.dp.toPx().toInt()
-                } / 2),
-                (center.y + yOffset).toFloat() - (with(density) {
-                    imageSize.height.dp.toPx().toInt()
-                } / 2)
-            )
 
-            val offsetVal =
-                sqrt(
-                    (center.x + xOffset).toFloat().pow(2) + (center.y + yOffset).toFloat()
-                        .pow(2)
-                )
+            // This is the center point for our image + text group
+            val groupCenterX = (center.x + xOffset).toFloat()
+            val groupCenterY = (center.y + yOffset).toFloat()
 
-            Log.e(
-                "TAG",
-                "PieChart: label : ${pieData.label}, radius: $radius, offset: $offsetVal, diff : ${offsetVal - radius}, x : $xOffset, y : $yOffset"
-            )
+            // Image dimensions in pixels
+            val imageWidthPx = with(density) { imageSize.width.dp.toPx() }
+            val imageHeightPx = with(density) { imageSize.height.dp.toPx() }
 
-            val intOffset = IntOffset(imageOffset.x.toInt(), imageOffset.y.toInt())
+
+            // 1. Measure androidx . compose . material3 . Text
+            val textToDraw = AnnotatedString(pieData.label)
+            // You can customize the text style here if needed
+
+            val textLayoutResult = textMeasurer.measure(text = textToDraw, style = textStyle)
+            val textWidthPx = textLayoutResult.size.width.toFloat()
+            val textHeightPx = textLayoutResult.size.height.toFloat()
+
+            // Define spacing between image and text in pixels
+            val spacingPx = with(density) { imageTextSpace.toPx() }
+
+            // 2. Calculate Total Height of the group (image + space + text)
+            val groupHeight = imageHeightPx + spacingPx + textHeightPx
+            val groupWidth = maxOf(imageWidthPx, textWidthPx)
+
+            // TODO set space between pie chart and group with the closest point
+
+            // 3. Calculate Image Top-Left Offset
+            // The group (image + text) is centered at (groupCenterX, groupCenterY)
+            // So, the top of the image starts at groupCenterY - totalGroupHeight / 2
+            val imageTopLeftX = groupCenterX - imageWidthPx / 2
+            val imageTopLeftY = groupCenterY - groupHeight / 2
+
+            val imageIntOffset = IntOffset(imageTopLeftX.toInt(), imageTopLeftY.toInt())
+
             // drawing icon
             drawImage(
-                pieData.iconPainter, dstOffset = intOffset,
-                dstSize = IntSize(
-                    with(density) { imageSize.width.dp.toPx().toInt() },
-                    with(density) { imageSize.height.dp.toPx().toInt() }
-                )
+                pieData.iconPainter, dstOffset = imageIntOffset,
+                dstSize = IntSize(imageWidthPx.toInt(), imageHeightPx.toInt())
+            )
+
+            // Text is placed below the image, after the spacing
+            val textTopLeftX = groupCenterX - textWidthPx / 2
+            val textTopLeftY = imageTopLeftY + imageHeightPx + spacingPx
+
+            // 6. Draw Text
+            drawText(
+                textLayoutResult = textLayoutResult,
+                topLeft = Offset(textTopLeftX, textTopLeftY)
             )
             // increasing start angle for next pie
             startAngle += pieData.angle
