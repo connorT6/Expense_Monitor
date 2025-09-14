@@ -9,7 +9,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -133,8 +132,9 @@ fun PieChart(pies: List<PieChartData>) {
                 }
             }
     ) {
-
+        // creating pie chart
         val center = calculateCenterOffset(size.width, size.height)
+        // calculating width of the line
         val strokeWidthPx = with(density) { strokeWidth.toPx() }
 
 
@@ -155,11 +155,14 @@ fun PieChart(pies: List<PieChartData>) {
 
             // icon & details will show on the center of slice
             val middleAngle: Double = (startAngle + pieData.angle / 2).toDouble()
-            val radAngle = middleAngle / 180 * PI // converting to radians
+            val middleAngleInRadians = middleAngle / 180 * PI // converting to radians
 
+            // icon offset is the space between pie chart and icon
             val iconOffsetPx = with(density) { iconOffset.toPx() }
-            val xOffset = (radius + (strokeWidthPx / 2) + iconOffsetPx) * cos(radAngle)
-            val yOffset = (radius + (strokeWidthPx / 2) + iconOffsetPx) * sin(radAngle)
+            val edgeRadius = radius + (strokeWidthPx / 2) // edge od the pie chart angle calculated CW
+            val xOffset = (edgeRadius + iconOffsetPx) * cos(middleAngleInRadians)
+            val yOffset = (edgeRadius + iconOffsetPx) * sin(middleAngleInRadians)
+            // image offset should be the top left corner of the image. hence the middle will be on the center
             val imageOffset = Offset(
                 (center.x + xOffset).toFloat() - (with(density) {
                     imageSize.width.dp.toPx().toInt()
@@ -181,7 +184,7 @@ fun PieChart(pies: List<PieChartData>) {
             )
 
             val intOffset = IntOffset(imageOffset.x.toInt(), imageOffset.y.toInt())
-
+            // drawing icon
             drawImage(
                 pieData.iconPainter, dstOffset = intOffset,
                 dstSize = IntSize(
@@ -189,6 +192,7 @@ fun PieChart(pies: List<PieChartData>) {
                     with(density) { imageSize.height.dp.toPx().toInt() }
                 )
             )
+            // increasing start angle for next pie
             startAngle += pieData.angle
         }
 
