@@ -9,11 +9,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -45,7 +41,7 @@ import kotlin.math.sqrt
 data class PieChartData(
     val label: String,
     val value: Double,
-    val iconPainter: ImageBitmap,
+    val iconResId: Int,
     val color: Color,
     var selected: Boolean = false,
     var angle: Float = 0f,
@@ -64,19 +60,22 @@ data class PieChartData(
 @Composable
 fun PieChart(pies: List<PieChartData>) {
 
+    val imageBitmaps = pies.associate {
+        it.label to ImageBitmap.imageResource(id = it.iconResId)
+    }
+
     val textMeasurer = rememberTextMeasurer()
     val totalValue = pies.sumOf { it.value }
     var totalSweep = 0f
-    var pieList by remember {
-        mutableStateOf(pies.mapIndexed { index, it ->
-            if (index == 0) {
-                totalSweep = 0f;
-            }
-            it.apply {
-                totalSweep = calcAngleTotalSweep(totalValue, totalSweep)
-            }
-        })
+    var pieList = pies.mapIndexed { index, it ->
+        if (index == 0) {
+            totalSweep = 0f;
+        }
+        it.apply {
+            totalSweep = calcAngleTotalSweep(totalValue, totalSweep)
+        }
     }
+
 
     val imageSize = Size(50f, 50f)
 
@@ -228,9 +227,10 @@ fun PieChart(pies: List<PieChartData>) {
 
             val imageIntOffset = IntOffset(imageTopLeftX.toInt(), imageTopLeftY.toInt())
 
+
             // drawing icon
             drawImage(
-                pieData.iconPainter, dstOffset = imageIntOffset,
+                image = imageBitmaps[pieData.label]!!, dstOffset = imageIntOffset,
                 dstSize = IntSize(imageWidthPx.toInt(), imageHeightPx.toInt())
             )
 
@@ -322,25 +322,25 @@ fun PieChartPreview() {
             PieChartData(
                 "Label 1",
                 10.0,
-                ImageBitmap.imageResource(R.drawable.ic_fns),
+                (R.drawable.ic_fns),
                 Color.Blue
             ),
             PieChartData(
                 "Label 2",
                 20.0,
-                ImageBitmap.imageResource(R.drawable.ic_bank_card3),
+                (R.drawable.ic_bank_card3),
                 Color.Red
             ),
             PieChartData(
                 "Label 3",
                 30.0,
-                ImageBitmap.imageResource(R.drawable.ic_accounts),
+                (R.drawable.ic_accounts),
                 Color.Green
             ),
             PieChartData(
                 "Label 4",
                 40.0,
-                ImageBitmap.imageResource(R.drawable.ic_beaty),
+                (R.drawable.ic_beaty),
                 Color.Yellow
             )
         ).mapIndexed { index, data -> data.copy(color = shuffled[index]) }

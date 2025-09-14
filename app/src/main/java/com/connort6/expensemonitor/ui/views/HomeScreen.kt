@@ -60,10 +60,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
@@ -167,7 +165,7 @@ fun HomeScreen(
                 .weight(1f),
             contentAlignment = Alignment.Center
         ) {
-            GeneratePieChart()
+            GeneratePieChart(homeScreenViewModel)
         }
 
         Row(
@@ -239,34 +237,12 @@ fun HomeScreen(
 
 
 @Composable
-fun GeneratePieChart() {
+fun GeneratePieChart(homeScreenViewModel: IHomeScreenViewModel) {
+
+    val pies by homeScreenViewModel.pieChartData.collectAsState()
+
     PieChart(
-        pies = listOf(
-            PieChartData(
-                "Label 1",
-                10.0,
-                ImageBitmap.imageResource(R.drawable.ic_fns),
-                Color.Blue
-            ),
-            PieChartData(
-                "Label 2",
-                20.0,
-                ImageBitmap.imageResource(R.drawable.ic_bank_card3),
-                Color.Red
-            ),
-            PieChartData(
-                "Label 3",
-                30.0,
-                ImageBitmap.imageResource(R.drawable.ic_accounts),
-                Color.Green
-            ),
-            PieChartData(
-                "Label 4",
-                40.0,
-                ImageBitmap.imageResource(R.drawable.ic_beaty),
-                Color.Yellow
-            )
-        )
+        pies = pies
     )
 }
 

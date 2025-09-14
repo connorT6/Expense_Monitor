@@ -3,6 +3,7 @@ package com.connort6.expensemonitor.ui.views
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.connort6.expensemonitor.R
 import com.connort6.expensemonitor.repo.Account
 import com.connort6.expensemonitor.repo.AccountRepo
 import com.connort6.expensemonitor.repo.Category
@@ -30,6 +31,7 @@ import java.math.BigDecimal
 import java.time.LocalTime
 import java.util.Calendar
 import java.util.Date
+import kotlin.math.absoluteValue
 
 
 interface IHomeScreenViewModel {
@@ -48,6 +50,8 @@ interface IHomeScreenViewModel {
     val showCreateTransaction: StateFlow<Boolean>
     val shouldModifyAccBal: StateFlow<Boolean>
     val errorCode: StateFlow<ErrorCodes>
+
+    val pieChartData: StateFlow<List<PieChartData>>
 
     fun createTransaction()
     fun saveTransaction(transaction: Transaction)
@@ -119,6 +123,9 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
     private val _errorCode = MutableStateFlow(IHomeScreenViewModel.ErrorCodes.NONE)
     override val errorCode = _errorCode.asStateFlow()
 
+    private val _pieChartData = MutableStateFlow<List<PieChartData>>(emptyList())
+    override val pieChartData = _pieChartData.asStateFlow()
+
     private val db = FirebaseFirestore.getInstance()
     private val accountRepo = AccountRepo.getInstance()
     private val categoryRepo = CategoryRepo.getInstance()
@@ -143,6 +150,34 @@ class HomeScreenViewModel : ViewModel(), IHomeScreenViewModel {
             selectedDate.collect { calendar ->
                 Log.d("DateUpdate", "New date: ${calendar}")
                 // Update UI
+            }
+        }
+
+        viewModelScope.launch {
+            transactionRepo.transactions.collect { transactions ->
+                val pies: List<PieChartData> = transactions.groupBy { it.categoryId }
+                    .map { (key, value) ->
+                        val transactionsSum = value.sumOf {
+                            if (it.transactionType == TransactionType.DEBIT) {
+                                return@sumOf -it.amount
+                            }
+                            return@sumOf it.amount
+                        }
+                        val category = categoryRepo.findById(key)
+                        if (category != null) {
+                            PieChartData(
+                                category.name,
+                                transactionsSum.absoluteValue,
+                                iconResId = getDrawableResIdFromR(category.iconName)
+                                    ?: R.drawable.ic_car_fuel,
+                                color = materialPieColors.random()
+                            )
+                        } else {
+                            null
+                        }
+                    }
+                    .filterNotNull()
+                _pieChartData.value = pies
             }
         }
     }
@@ -434,6 +469,36 @@ class MockHomeScreenViewModel : IHomeScreenViewModel {
         get() = MutableStateFlow(false)
     override val errorCode: StateFlow<IHomeScreenViewModel.ErrorCodes>
         get() = MutableStateFlow(IHomeScreenViewModel.ErrorCodes.NONE).asStateFlow()
+
+    override val pieChartData: StateFlow<List<PieChartData>>
+        get() = MutableStateFlow(
+            listOf(
+                PieChartData(
+                    "Label 1",
+                    10.0,
+                    (R.drawable.ic_fns),
+                    materialPieColors.random()
+                ),
+                PieChartData(
+                    "Label 2",
+                    20.0,
+                    (R.drawable.ic_bank_card3),
+                    materialPieColors.random()
+                ),
+                PieChartData(
+                    "Label 3",
+                    30.0,
+                    (R.drawable.ic_accounts),
+                    materialPieColors.random()
+                ),
+                PieChartData(
+                    "Label 4",
+                    40.0,
+                    (R.drawable.ic_beaty),
+                    materialPieColors.random()
+                )
+            )
+        )
 
     override fun selectSmsMessage(selectedSms: SmsMessage?) {
 
