@@ -85,18 +85,24 @@ fun PieChart(pies: List<PieChartData>) {
 
     val textMeasurer = rememberTextMeasurer()
     val totalValue = pies.sumOf { it.value }
-    var totalSweep = 0f
-    var pieList by remember(pies, startAngle) {
-        mutableStateOf(
-            pies.mapIndexed { index, it ->
-                if (index == 0) {
-                    totalSweep = startAngle;
+    val pieListState = remember { mutableStateOf<List<PieChartData>>(emptyList()) }
+    var pieList by pieListState
+
+    // Update the pieListState.value when pies or startAngle changes
+    LaunchedEffect(pies, startAngle, totalValue) {
+        var currentSweep = startAngle
+        val oldPieMap = pieListState.value.associateBy { it.label }
+        val newList = pies.map { pieData ->
+            val existingPieData = oldPieMap[pieData.label]
+            pieData.apply {
+                existingPieData?.let { oldData ->
+                    this.selected = oldData.selected
+                    this.scale = oldData.scale
                 }
-                it.apply {
-                    totalSweep = calcAngleTotalSweep(totalValue, totalSweep)
-                }
+                currentSweep = calcAngleTotalSweep(totalValue, currentSweep)
             }
-        )
+        }
+        pieListState.value = newList
     }
 
     LaunchedEffect(pieList) {
