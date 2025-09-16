@@ -1,15 +1,26 @@
 package com.connort6.expensemonitor.ui.views
 
 import android.content.res.Configuration
+import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -17,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.drawText
@@ -46,12 +58,17 @@ data class PieChartData(
     var selected: Boolean = false,
     var angle: Float = 0f,
     var startAngle: Float = 0f,
+    var endAngle: Float = 0f,
     var scale: Animatable<Float, AnimationVector1D> = Animatable(1f),
 ) {
     fun calcAngleTotalSweep(totalValue: Double, currentSweep: Float): Float {
         angle = (value / totalValue * 360).toFloat()
         startAngle = currentSweep
-        return currentSweep + angle
+        endAngle = (currentSweep + angle) % 360
+        if (endAngle < 0) {
+            endAngle += 360
+        }
+        return endAngle
     }
 }
 
@@ -64,26 +81,50 @@ fun PieChart(pies: List<PieChartData>) {
         it.label to ImageBitmap.imageResource(id = it.iconResId)
     }
 
+    var startAngle by remember { mutableFloatStateOf(0f) }
+
     val textMeasurer = rememberTextMeasurer()
     val totalValue = pies.sumOf { it.value }
     var totalSweep = 0f
-    var pieList = pies.mapIndexed { index, it ->
-        if (index == 0) {
-            totalSweep = 0f;
-        }
-        it.apply {
-            totalSweep = calcAngleTotalSweep(totalValue, totalSweep)
-        }
+    var pieList by remember(pies, startAngle) {
+        mutableStateOf(
+            pies.mapIndexed { index, it ->
+                if (index == 0) {
+                    totalSweep = startAngle;
+                }
+                it.apply {
+                    totalSweep = calcAngleTotalSweep(totalValue, totalSweep)
+                }
+            }
+        )
     }
 
+    LaunchedEffect(pieList) {
+        pieList.forEach {
+            Log.e("ASD", "${it.label} start angle: ${it.startAngle} end angle: ${it.endAngle}")
+        }
+
+    }
 
     val imageSize = Size(50f, 50f)
 
+    var composableWidth by remember { mutableIntStateOf(0) }
+    var composableHeight by remember { mutableIntStateOf(0) }
+
+    var centerOffset by remember(composableWidth, composableHeight) {
+        mutableStateOf(Offset(composableWidth / 2f, composableHeight / 2f))
+    }
+
+    var initialRadius by remember(composableWidth, composableHeight) {
+        mutableFloatStateOf(min(composableWidth, composableHeight) / 4f)
+    }
+
+
     val strokeWidth = 30.dp
-    var startAngle = 0f
+
     val coroutineScope = rememberCoroutineScope()
 //    val iconOffset = 45.dp
-    val iconSpace = 1.dp
+    val iconSpace = 10.dp
     val selectedScale = 1.1f
     val labelFontSize = 18.sp
     val imageTextSpace = 0.dp
@@ -96,71 +137,114 @@ fun PieChart(pies: List<PieChartData>) {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
+            .onSizeChanged { size ->
+                composableWidth = size.width
+                composableHeight = size.height
+            }
             .pointerInput(Unit) {
-                detectTapGestures { tapOffset ->
-                    val center = calculateCenterOffset(size.width, size.height)
-                    val radius = calculatePieChartRadius(size.width, size.height)
-                    val xOffset = tapOffset.x - center.x
-                    val yOffset = tapOffset.y - center.y
-                    val distance = sqrt(
-                        xOffset.pow(2) + yOffset.pow(2)
-                    )
 
-                    val strokeWidthPx = with(density) { strokeWidth.toPx() }
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    down.consume()
 
-                    // outer circle taking as 1.2 which is clicked
-                    if (distance !in (radius - (strokeWidthPx / 2 + 20f))..((radius * selectedScale) + strokeWidthPx / 2 + 20f)) {
-                        return@detectTapGestures // if the radius not in range abort
+                    val change = awaitTouchSlopOrCancellation(down.id) { change, overSlop ->
+                        if (change.pressed && overSlop != Offset.Zero) {
+                            change.consume()
+//                            pointOffset += overSlop // Apply the initial movement past slop
+                        }
                     }
 
-                    // this will return angle according to mathematical way (CCW) but canvas draws Clockwise
-                    var angle = atan2(yOffset, xOffset) * 180 / PI
+                    if (change != null && change.pressed) {
+                        // Dragging
+                        drag(change.id) { dragChange ->
+                            val pointOffset = dragChange.position
+                            val prevOffset = dragChange.previousPosition
+                            val currentAngle = calculateAngle(pointOffset, centerOffset)
+                            val prevAngle = calculateAngle(prevOffset, centerOffset)
+
+                            val angleDiff = currentAngle - prevAngle
+
+                            startAngle =
+                                ((startAngle + angleDiff) % 360).let { if (it < 0) it + 360 else it }
+                        }
+                    } else {
+                        val center = centerOffset
+                        val radius = initialRadius
+                        val xOffset = down.position.x - center.x
+                        val yOffset = down.position.y - center.y
+                        val distance = sqrt(
+                            xOffset.pow(2) + yOffset.pow(2)
+                        )
+
+                        val strokeWidthPx = with(density) { strokeWidth.toPx() }
+
+                        // outer circle taking as 1.2 which is clicked
+                        if (distance !in (radius - (strokeWidthPx / 2 + 20f))..((radius * selectedScale) + strokeWidthPx / 2 + 20f)) {
+                            return@awaitEachGesture // if the radius not in range abort
+                        }
+
+                        // this will return angle according to mathematical way (CCW) but canvas draws Clockwise
+                        var angle = calculateAngle(down.position, centerOffset)
 //                    angle = angle * -1 // converting to clockwise angle
-                    if (angle < 0) { // first angle will return [0,180]/[0,-180] need to convert (-) values to positive
-                        angle += 360
-                    }
-
-                    pieList = pieList.map { pieData ->
-                        val newVal: PieChartData
-                        if (angle in pieData.startAngle..pieData.startAngle + pieData.angle) {
-                            newVal = pieData.copy(selected = !pieData.selected)
-                        } else {
-                            newVal = pieData.copy(selected = false)
+                        if (angle < 0) { // first angle will return [0,180]/[0,-180] need to convert (-) values to positive
+                            angle += 360
                         }
-                        coroutineScope.launch {
-                            if (pieData.selected && !newVal.selected) {
-                                newVal.scale.animateTo(
-                                    targetValue = 1f,
-                                    animationSpec = tween(durationMillis = 300)
-                                )
-                            }
-                            if (!pieData.selected && newVal.selected) {
-                                newVal.scale.animateTo(
-                                    targetValue = selectedScale,
-                                    animationSpec = tween(durationMillis = 300)
-                                )
-                            }
-                        }
-                        newVal
-                    }
 
+                        Log.e("ASD", "IN TOUCH")
+                        pieList.forEach {
+                            Log.e("ASD", "TOUCH ${it.label} start angle: ${it.startAngle} end angle: ${it.endAngle}")
+                        }
+
+                        pieList = pieList.map { pieData ->
+                            val newVal: PieChartData
+                            val isInBetween = if (pieData.endAngle < pieData.startAngle) {
+                                angle in pieData.startAngle..360.0f || angle in 0.0f..pieData.endAngle
+                            } else {
+                                angle in pieData.startAngle..pieData.endAngle
+                            }
+                            if (isInBetween) {
+                                newVal = pieData.copy(selected = !pieData.selected)
+                            } else {
+                                newVal = pieData.copy(selected = false)
+                            }
+                            coroutineScope.launch {
+                                if (pieData.selected && !newVal.selected) {
+                                    newVal.scale.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec = tween(durationMillis = 300)
+                                    )
+                                }
+                                if (!pieData.selected && newVal.selected) {
+                                    newVal.scale.animateTo(
+                                        targetValue = selectedScale,
+                                        animationSpec = tween(durationMillis = 300)
+                                    )
+                                }
+                            }
+                            newVal
+                        }
+                    }
                 }
+
             }
     ) {
         // creating pie chart
-        val center = calculateCenterOffset(size.width, size.height)
+        val center = centerOffset
         // calculating width of the line
         val strokeWidthPx = with(density) { strokeWidth.toPx() }
 
+        Log.e("ASD", "RE DRAW")
 
         pieList.forEach { pieData ->
 
+            Log.e("ASD", "RE DRAW ${pieData.label} start angle: ${pieData.startAngle} end angle: ${pieData.endAngle}")
+
             // when clicked radius will increased
-            val radius = calculatePieChartRadius(size.width, size.height) * pieData.scale.value
+            val radius = initialRadius * pieData.scale.value
 
             drawArc(
                 color = pieData.color,
-                startAngle = startAngle,
+                startAngle = pieData.startAngle,
                 sweepAngle = pieData.angle,
                 useCenter = false,
                 topLeft = Offset(center.x - radius, center.y - radius),
@@ -190,7 +274,7 @@ fun PieChart(pies: List<PieChartData>) {
 
 
             // icon & details will show on the center of slice
-            val middleAngle: Double = (startAngle + pieData.angle / 2).toDouble()
+            val middleAngle: Double = (pieData.startAngle + pieData.angle / 2).toDouble()
             val middleAngleInRadians = middleAngle / 180 * PI // converting to radians
 
 
@@ -243,24 +327,37 @@ fun PieChart(pies: List<PieChartData>) {
                 textLayoutResult = textLayoutResult,
                 topLeft = Offset(textTopLeftX, textTopLeftY)
             )
-            // increasing start angle for next pie
-            startAngle += pieData.angle
         }
 
     }
+}
+
+private fun calculateAngle(
+    pointOffset: Offset,
+    centerOffset: Offset
+): Float {
+    val y = pointOffset.y - centerOffset.y
+    val x = pointOffset.x - centerOffset.x
+    val angleRad = atan2(y, x)
+    val angleDeg = Math.toDegrees(angleRad.toDouble()).toFloat()
+    if (angleDeg < 0) {
+        return 360 + angleDeg
+    }
+    return angleDeg
+
 }
 
 /**
  * Calculates the center offset for a given width and height.
  * width and height must be in pixels
  */
-private fun calculateCenterOffset(width: Number, height: Number): Offset {
-    return Offset(width.toInt() / 2f, height.toInt() / 2f)
-}
-
-private fun calculatePieChartRadius(width: Number, height: Number): Float {
-    return min(width.toFloat(), height.toFloat()) / 4f
-}
+//private fun calculateCenterOffset(width: Number, height: Number): Offset {
+//    return Offset(width.toInt() / 2f, height.toInt() / 2f)
+//}
+//
+//private fun calculatePieChartRadius(width: Number, height: Number): Float {
+//    return min(width.toFloat(), height.toFloat()) / 4f
+//}
 
 private fun calculateDistanceToRectangleCorner(
     rectangleWidth: Float,
@@ -330,7 +427,7 @@ fun PieChartPreview() {
                 20.0,
                 (R.drawable.ic_bank_card3),
                 Color.Red
-            ),
+            )/*,
             PieChartData(
                 "Label 3",
                 30.0,
@@ -342,7 +439,7 @@ fun PieChartPreview() {
                 40.0,
                 (R.drawable.ic_beaty),
                 Color.Yellow
-            )
+            )*/
         ).mapIndexed { index, data -> data.copy(color = shuffled[index]) }
         PieChart(
             pies = pies
