@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -138,25 +139,30 @@ fun HomeScreen(
                     navController.navigate("accountPage")
                 })
             }
+
+
             Spacer(Modifier.height(8.dp))
-            Button({
-                navController.navigate("categoryScreen")
-            }) {
-                Text("Categories")
+            Row {
+                Button({
+                    navController.navigate("categoryScreen")
+                }) {
+                    Text("Categories")
+                }
+                Spacer(Modifier.width(8.dp))
+                Button({
+                    navController.navigate("transactionScreen")
+                }) {
+                    Text("Transactions")
+                }
+                Spacer(Modifier.width(8.dp))
+                Button({
+                    smsViewModel.setOpenType(OpenType.GENERAL)
+                    navController.navigate("smsReader")
+                }) {
+                    Text("SMS")
+                }
             }
-            Spacer(Modifier.height(8.dp))
-            Button({
-                navController.navigate("transactionScreen")
-            }) {
-                Text("Transactions")
-            }
-            Spacer(Modifier.height(8.dp))
-            Button({
-                smsViewModel.setOpenType(OpenType.GENERAL)
-                navController.navigate("smsReader")
-            }) {
-                Text("SMS")
-            }
+
         }
 
         Box(
@@ -165,7 +171,13 @@ fun HomeScreen(
                 .weight(1f),
             contentAlignment = Alignment.Center
         ) {
-            GeneratePieChart(homeScreenViewModel)
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                GeneratePieChart(homeScreenViewModel)
+//                Spacer(modifier = Modifier.height(8.dp))
+                StatView(homeScreenViewModel)
+            }
         }
 
         Row(
@@ -232,6 +244,33 @@ fun HomeScreen(
             },
             navigateToSms = { navController.navigate("smsReader") }
         )
+    }
+}
+
+@Composable
+private fun StatView(homeScreenViewModel: IHomeScreenViewModel) {
+    val pieData by homeScreenViewModel.pieChartData.collectAsState()
+//    LazyColumn {
+//        items(pieData.sortedByDescending { it.value }) {
+//            StatItemView(it.label, it.value.toString())
+//        }
+//    }
+
+    for (pie in pieData) {
+        StatItemView(pie.label, "LKR %.2f".format(pie.value))
+    }
+}
+
+@Composable
+private fun StatItemView(name: String, value: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        Text(name)
+        Spacer(Modifier.height(4.dp))
+        Text(value)
     }
 }
 
@@ -872,5 +911,14 @@ private fun DatePickerPrev() {
 fun TimePickPrev() {
     ExpenseMonitorTheme {
         TimePickerDialog(MockHomeScreenViewModel(), LocalTime.now()) {}
+    }
+}
+
+
+@Preview
+@Composable
+fun StatItemPrew() {
+    ExpenseMonitorTheme {
+        StatItemView("Name", "Value")
     }
 }

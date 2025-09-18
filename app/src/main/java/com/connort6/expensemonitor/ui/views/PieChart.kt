@@ -10,7 +10,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.drag
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -118,7 +119,8 @@ fun PieChart(pies: List<PieChartData>) {
     var composableHeight by remember { mutableIntStateOf(0) }
 
     var centerOffset by remember(composableWidth, composableHeight) {
-        mutableStateOf(Offset(composableWidth / 2f, composableHeight / 2f))
+        val minLength = min(composableWidth, composableHeight)
+        mutableStateOf(Offset(minLength / 2f, minLength / 2f))
     }
 
     var initialRadius by remember(composableWidth, composableHeight) {
@@ -142,7 +144,8 @@ fun PieChart(pies: List<PieChartData>) {
 
     Canvas(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .onSizeChanged { size ->
                 composableWidth = size.width
                 composableHeight = size.height
@@ -163,6 +166,7 @@ fun PieChart(pies: List<PieChartData>) {
                     if (change != null && change.pressed) {
                         // Dragging
                         drag(change.id) { dragChange ->
+                            dragChange.consume()
                             val pointOffset = dragChange.position
                             val prevOffset = dragChange.previousPosition
                             val currentAngle = calculateAngle(pointOffset, centerOffset)
